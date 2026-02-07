@@ -70,16 +70,13 @@ class BootstrapManager(
         // No -r flag needed — proot just wraps the host tar binary.
         val prootPath = "$nativeLibDir/libproot.so"
 
+        // Android ships toybox tar which only supports basic POSIX flags.
+        // No GNU-specific options like --warning, --delay-directory-restore, etc.
         val pb = ProcessBuilder(
             prootPath,
             "--link2symlink",
             "tar", "-C", rootfsDir,
-            "--warning=no-unknown-keyword",
-            "--delay-directory-restore",
-            "--preserve-permissions",
-            "--no-same-owner",
-            "-xzf", tarPath,
-            "--exclude=dev"
+            "-xpzf", tarPath
         )
         pb.environment()["PROOT_TMP_DIR"] = tmpDir
         pb.environment()["PROOT_NO_SECCOMP"] = "1"
