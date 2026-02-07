@@ -223,6 +223,11 @@ class BootstrapManager(
         aptConfDir.mkdirs()
         File(aptConfDir, "01-openclawd-proot").writeText(
             "APT::Sandbox::User \"root\";\n" +
+            // Disable PTY allocation when APT forks dpkg. APT's child process
+            // calls SetupSlavePtyMagic() before execvp(dpkg); in proot on
+            // Android 10+ (W^X policy), the PTY/chdir setup in the child can
+            // fail causing _exit(100). Disabling this simplifies the fork path.
+            "Dpkg::Use-Pty \"0\";\n" +
             // Pass dpkg options through apt to tolerate proot failures
             "Dpkg::Options { \"--force-confnew\"; \"--force-overwrite\"; };\n"
         )

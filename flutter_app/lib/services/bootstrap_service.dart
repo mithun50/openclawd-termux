@@ -130,40 +130,31 @@ class BootstrapService {
       onProgress(const SetupState(
         step: SetupStep.installingNode,
         progress: 0.2,
-        message: 'Installing base packages...',
+        message: 'Downloading base packages...',
       ));
-      // Retry logic: if first attempt fails, do blanket permission fix
-      // and retry with --force-all to get past any remaining dpkg issues.
-      try {
-        await NativeBridge.runInProot(
-          'apt-get -q install -y --no-install-recommends '
-          '-o Dpkg::Options::="--force-confdef" '
-          'ca-certificates curl gnupg',
-        );
-      } catch (e) {
-        onProgress(const SetupState(
-          step: SetupStep.installingNode,
-          progress: 0.2,
-          message: 'Repairing packages and retrying...',
-        ));
-        // Blanket permission fix again (dpkg may have extracted new scripts)
-        // + repair dpkg state
-        await NativeBridge.runInProot(
-          'chmod -R 755 /usr/bin /usr/sbin /bin /sbin 2>/dev/null; '
-          'chmod -R +x /usr/lib/apt/ /usr/lib/dpkg/ '
-          '/var/lib/dpkg/info/ /usr/share/debconf/ 2>/dev/null; '
-          'dpkg --force-all --configure -a 2>&1 || true; '
-          'apt --fix-broken install -y '
-          '-o Dpkg::Options::="--force-all" 2>&1 || true',
-        );
-        // Second attempt with --force-all to push past stubborn errors
-        await NativeBridge.runInProot(
-          'apt-get -q install -y --no-install-recommends '
-          '-o Dpkg::Options::="--force-confdef" '
-          '-o Dpkg::Options::="--force-all" '
-          'ca-certificates curl gnupg',
-        );
-      }
+      // APT's internal fork→exec→dpkg fails with exit 100 on Android 10+
+      // (W^X policy + PTY setup in the forked child). Workaround: download
+      // packages via apt (no dpkg needed), then run dpkg directly from the
+      // shell where proot's ptrace interception works correctly.
+      await NativeBridge.runInProot(
+        'apt-get -q -d install -y --no-install-recommends '
+        'ca-certificates curl gnupg',
+      );
+
+      onProgress(const SetupState(
+        step: SetupStep.installingNode,
+        progress: 0.25,
+        message: 'Installing base packages via dpkg...',
+      ));
+      await NativeBridge.runInProot(
+        'dpkg --force-depends --force-overwrite --force-confnew '
+        '-i /var/cache/apt/archives/*.deb 2>&1 || true',
+      );
+
+      // Configure any packages left unconfigured and fix dependencies
+      await NativeBridge.runInProot(
+        'dpkg --configure -a --force-all 2>&1 || true',
+      );
 
       // Verify curl is available before proceeding
       await NativeBridge.runInProot('which curl');
@@ -181,11 +172,23 @@ class BootstrapService {
       onProgress(const SetupState(
         step: SetupStep.installingNode,
         progress: 0.6,
-        message: 'Installing Node.js...',
+        message: 'Downloading Node.js...',
       ));
       await NativeBridge.runInProot(
-        'apt-get install -y --no-install-recommends '
-        '-o Dpkg::Options::="--force-confdef" nodejs',
+        'apt-get -q -d install -y --no-install-recommends nodejs',
+      );
+
+      onProgress(const SetupState(
+        step: SetupStep.installingNode,
+        progress: 0.75,
+        message: 'Installing Node.js via dpkg...',
+      ));
+      await NativeBridge.runInProot(
+        'dpkg --force-depends --force-overwrite --force-confnew '
+        '-i /var/cache/apt/archives/*.deb 2>&1 || true',
+      );
+      await NativeBridge.runInProot(
+        'dpkg --configure -a --force-all 2>&1 || true',
       );
 
       onProgress(const SetupState(
