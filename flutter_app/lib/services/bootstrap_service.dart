@@ -85,20 +85,17 @@ class BootstrapService {
       ));
 
       // Step 3: Install Node.js
-      // First fix permissions inside proot (Java extraction may miss some)
-      // and verify dpkg works before attempting package installs.
+      // Fix permissions inside proot (Java extraction may miss execute bits)
       onProgress(const SetupState(
         step: SetupStep.installingNode,
         progress: 0.0,
         message: 'Fixing rootfs permissions...',
       ));
-      // Fix permissions inside proot where symlink resolution works correctly
       await NativeBridge.runInProot(
         'chmod 755 /usr/bin/dpkg /usr/bin/dpkg-* /usr/bin/apt* '
         '/usr/lib/apt/methods/* /usr/bin/perl* /usr/bin/bash '
         '/bin/bash /bin/sh 2>/dev/null; '
         'chmod -R 755 /usr/sbin /usr/lib/dpkg 2>/dev/null; '
-        // Ensure ld.so is executable (dynamic linker)
         'chmod 755 /lib/*/ld-linux-*.so* /usr/lib/*/ld-linux-*.so* 2>/dev/null; '
         'echo permissions_fixed',
       );
@@ -106,9 +103,8 @@ class BootstrapService {
       onProgress(const SetupState(
         step: SetupStep.installingNode,
         progress: 0.05,
-        message: 'Verifying dpkg works...',
+        message: 'Verifying dpkg...',
       ));
-      // Test that dpkg can actually execute
       await NativeBridge.runInProot('dpkg --version');
 
       onProgress(const SetupState(
@@ -124,7 +120,7 @@ class BootstrapService {
         message: 'Configuring pending packages...',
       ));
       await NativeBridge.runInProot(
-        'dpkg --configure -a --force-all 2>&1 || true',
+        'dpkg --configure -a 2>&1 || true',
       );
 
       onProgress(const SetupState(
@@ -132,13 +128,14 @@ class BootstrapService {
         progress: 0.2,
         message: 'Installing base packages...',
       ));
+      // Now that proot has --sysvipc and proper binds, dpkg should work.
+      // Don't mask errors with || true — let real failures propagate.
       await NativeBridge.runInProot(
-        'apt-get -o Dpkg::Options::=--force-all install -y '
-        '--no-install-recommends ca-certificates curl gnupg 2>&1 || '
-        '{ dpkg --configure -a --force-all 2>&1; '
-        'apt-get -o Dpkg::Options::=--force-all install -y '
-        '--no-install-recommends --fix-broken 2>&1; true; }',
+        'apt-get install -y --no-install-recommends ca-certificates curl gnupg',
       );
+
+      // Verify curl is available before proceeding
+      await NativeBridge.runInProot('which curl');
 
       onProgress(const SetupState(
         step: SetupStep.installingNode,
@@ -155,13 +152,7 @@ class BootstrapService {
         progress: 0.6,
         message: 'Installing Node.js...',
       ));
-      await NativeBridge.runInProot(
-        'apt-get -o Dpkg::Options::=--force-all install -y '
-        '--no-install-recommends nodejs 2>&1 || '
-        '{ dpkg --configure -a --force-all 2>&1; '
-        'apt-get -o Dpkg::Options::=--force-all install -y '
-        '--no-install-recommends --fix-broken 2>&1; true; }',
-      );
+      await NativeBridge.runInProot('apt-get install -y --no-install-recommends nodejs');
 
       onProgress(const SetupState(
         step: SetupStep.installingNode,
