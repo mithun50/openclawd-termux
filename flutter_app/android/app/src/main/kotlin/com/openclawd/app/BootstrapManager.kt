@@ -290,6 +290,14 @@ os.networkInterfaces = function() {
         configDir.mkdirs()
 
         File("$configDir/resolv.conf").writeText("nameserver 8.8.8.8\nnameserver 8.8.4.4\n")
+
+        // libgcrypt reads /proc/sys/crypto/fips_enabled on startup.
+        // On Android this path is missing or unreadable through proot,
+        // causing apt's HTTP method to abort (signal 6).
+        // Provide a fake file returning "0" (FIPS disabled).
+        val procFakeDir = File("$configDir/proc_fakes")
+        procFakeDir.mkdirs()
+        File(procFakeDir, "fips_enabled").writeText("0\n")
     }
 
     private fun checkNodeInProot(): Boolean {

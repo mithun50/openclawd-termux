@@ -20,6 +20,8 @@ class ProcessManager(
         val prootPath = getProotPath()
         val nodeOptions = "--require /root/.openclawd/bionic-bypass.js"
 
+        val procFakesDir = "$configDir/proc_fakes"
+
         return listOf(
             prootPath,
             "-0",
@@ -28,6 +30,7 @@ class ProcessManager(
             "-b", "/dev",
             "-b", "/proc",
             "-b", "/sys",
+            "-b", "$procFakesDir/fips_enabled:/proc/sys/crypto/fips_enabled",
             "-b", "$configDir/resolv.conf:/etc/resolv.conf",
             "-b", "$homeDir:/root/home",
             "-w", "/root",
