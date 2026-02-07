@@ -8,7 +8,7 @@ class AppConstants {
   static const String gatewayUrl = 'http://$gatewayHost:$gatewayPort';
 
   static const String ubuntuRootfsUrl =
-      'https://cdimage.ubuntu.com/ubuntu-base/releases/24.04/release/ubuntu-base-24.04.2-base-';
+      'https://cdimage.ubuntu.com/ubuntu-base/releases/24.04/release/ubuntu-base-24.04.3-base-';
   static const String rootfsArm64 = '${ubuntuRootfsUrl}arm64.tar.gz';
   static const String rootfsArmhf = '${ubuntuRootfsUrl}armhf.tar.gz';
   static const String rootfsAmd64 = '${ubuntuRootfsUrl}amd64.tar.gz';
