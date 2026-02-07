@@ -1,9 +1,14 @@
 package com.openclawd.app
 
 import android.content.Context
-import java.io.BufferedReader
+import android.system.Os
+import java.io.BufferedInputStream
 import java.io.File
-import java.io.InputStreamReader
+import java.io.FileInputStream
+import java.io.FileOutputStream
+import java.util.zip.GZIPInputStream
+import org.apache.commons.compress.archivers.tar.TarArchiveEntry
+import org.apache.commons.compress.archivers.tar.TarArchiveInputStream
 
 class BootstrapManager(
     private val context: Context,
@@ -64,41 +69,105 @@ class BootstrapManager(
         val rootfs = File(rootfsDir)
         rootfs.mkdirs()
 
-        // Use proot --link2symlink to wrap tar, exactly like proot-distro does.
-        // proot intercepts syscalls so tar's hard links become symlinks and
-        // absolute symlink targets are handled correctly.
-        // No -r flag needed — proot just wraps the host tar binary.
-        val prootPath = "$nativeLibDir/libproot.so"
+        // Pure Java extraction using Apache Commons Compress.
+        // Avoids all proot/tar compatibility issues with Android kernels.
+        // Hard links are converted to symlinks (like proot --link2symlink).
+        FileInputStream(tarPath).use { fis ->
+            BufferedInputStream(fis, 256 * 1024).use { bis ->
+                GZIPInputStream(bis).use { gis ->
+                    TarArchiveInputStream(gis).use { tis ->
+                        var entry: TarArchiveEntry? = tis.nextEntry
+                        while (entry != null) {
+                            val name = entry.name
+                                .removePrefix("./")
+                                .removePrefix("/")
 
-        // Use ProcessBuilder.directory() instead of tar -C to avoid proot
-        // intercepting chdir syscall (which fails with ENOSYS on some kernels).
-        val pb = ProcessBuilder(
-            prootPath,
-            "--link2symlink",
-            "tar", "-xzf", tarPath,
-            "--exclude", "dev"
-        )
-        pb.directory(File(rootfsDir))
-        pb.environment()["PROOT_TMP_DIR"] = tmpDir
-        pb.environment()["PROOT_NO_SECCOMP"] = "1"
-        pb.environment()["PROOT_LOADER"] = "$nativeLibDir/libprootloader.so"
-        pb.environment()["PROOT_LOADER_32"] = "$nativeLibDir/libprootloader32.so"
-        pb.environment()["LD_LIBRARY_PATH"] = "$libDir:$nativeLibDir"
-        pb.redirectErrorStream(true)
+                            // Skip empty names and /dev entries
+                            if (name.isEmpty() || name.startsWith("dev/") || name == "dev") {
+                                entry = tis.nextEntry
+                                continue
+                            }
 
-        val process = pb.start()
-        val output = process.inputStream.bufferedReader().readText()
-        val exitCode = process.waitFor()
+                            val outFile = File(rootfsDir, name)
 
-        // Verify extraction worked
+                            when {
+                                entry.isDirectory -> {
+                                    outFile.mkdirs()
+                                }
+                                entry.isSymbolicLink -> {
+                                    outFile.parentFile?.mkdirs()
+                                    try {
+                                        if (outFile.exists() || isSymlink(outFile)) {
+                                            outFile.delete()
+                                        }
+                                        Os.symlink(entry.linkName, outFile.absolutePath)
+                                    } catch (_: Exception) {}
+                                }
+                                entry.isLink -> {
+                                    // Hard link → symlink (same as --link2symlink)
+                                    outFile.parentFile?.mkdirs()
+                                    val target = entry.linkName
+                                        .removePrefix("./")
+                                        .removePrefix("/")
+                                    try {
+                                        if (outFile.exists() || isSymlink(outFile)) {
+                                            outFile.delete()
+                                        }
+                                        // Use absolute path within rootfs so it works
+                                        // both on host and inside proot
+                                        val targetFile = File(rootfsDir, target)
+                                        if (targetFile.exists()) {
+                                            Os.symlink(targetFile.absolutePath, outFile.absolutePath)
+                                        }
+                                    } catch (_: Exception) {}
+                                }
+                                else -> {
+                                    // Regular file
+                                    outFile.parentFile?.mkdirs()
+                                    FileOutputStream(outFile).use { fos ->
+                                        val buf = ByteArray(65536)
+                                        var len: Int
+                                        while (tis.read(buf).also { len = it } != -1) {
+                                            fos.write(buf, 0, len)
+                                        }
+                                    }
+                                    // Preserve execute permission
+                                    if (entry.mode and 0b001_001_001 != 0) {
+                                        outFile.setExecutable(true, false)
+                                    }
+                                    if (entry.mode and 0b010_010_010 != 0) {
+                                        outFile.setWritable(true, false)
+                                    }
+                                    if (entry.mode and 0b100_100_100 != 0) {
+                                        outFile.setReadable(true, false)
+                                    }
+                                }
+                            }
+
+                            entry = tis.nextEntry
+                        }
+                    }
+                }
+            }
+        }
+
+        // Verify extraction
         if (!File("$rootfsDir/bin/bash").exists()) {
-            throw RuntimeException(
-                "Rootfs extraction failed (code $exitCode): /bin/bash not found. Output: $output"
-            )
+            throw RuntimeException("Extraction failed: /bin/bash not found in rootfs")
         }
 
         // Clean up tarball
         File(tarPath).delete()
+    }
+
+    private fun isSymlink(file: File): Boolean {
+        return try {
+            val canonical = file.canonicalFile
+            val absolute = file.absoluteFile
+            canonical.path != absolute.path
+        } catch (_: Exception) {
+            false
+        }
     }
 
     fun installBionicBypass() {
