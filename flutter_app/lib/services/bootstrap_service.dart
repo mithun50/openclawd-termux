@@ -84,17 +84,46 @@ class BootstrapService {
         message: 'Rootfs extracted',
       ));
 
-      // Step 3: Install Node.js
+      // Step 3: Install Node.js (split into sub-steps for better error reporting)
       onProgress(const SetupState(
         step: SetupStep.installingNode,
         progress: 0.0,
-        message: 'Installing Node.js (this takes several minutes)...',
+        message: 'Updating package lists...',
+      ));
+      await NativeBridge.runInProot('apt-get update -y');
+
+      onProgress(const SetupState(
+        step: SetupStep.installingNode,
+        progress: 0.2,
+        message: 'Installing base packages...',
       ));
       await NativeBridge.runInProot(
-        'apt update && apt install -y curl wget git && '
-        'curl -fsSL https://deb.nodesource.com/setup_22.x | bash - && '
-        'apt install -y nodejs',
+        'apt-get install -y ca-certificates curl gnupg',
       );
+
+      onProgress(const SetupState(
+        step: SetupStep.installingNode,
+        progress: 0.4,
+        message: 'Adding NodeSource repository...',
+      ));
+      await NativeBridge.runInProot(
+        'curl -fsSL https://deb.nodesource.com/setup_22.x -o /tmp/nodesource_setup.sh && '
+        'bash /tmp/nodesource_setup.sh',
+      );
+
+      onProgress(const SetupState(
+        step: SetupStep.installingNode,
+        progress: 0.6,
+        message: 'Installing Node.js...',
+      ));
+      await NativeBridge.runInProot('apt-get install -y nodejs');
+
+      onProgress(const SetupState(
+        step: SetupStep.installingNode,
+        progress: 0.9,
+        message: 'Verifying Node.js...',
+      ));
+      await NativeBridge.runInProot('node --version && npm --version');
       onProgress(const SetupState(
         step: SetupStep.installingNode,
         progress: 1.0,
@@ -105,9 +134,16 @@ class BootstrapService {
       onProgress(const SetupState(
         step: SetupStep.installingOpenClaw,
         progress: 0.0,
-        message: 'Installing OpenClaw...',
+        message: 'Installing OpenClaw (this may take a few minutes)...',
       ));
       await NativeBridge.runInProot('npm install -g openclaw');
+
+      onProgress(const SetupState(
+        step: SetupStep.installingOpenClaw,
+        progress: 0.9,
+        message: 'Verifying OpenClaw...',
+      ));
+      await NativeBridge.runInProot('openclaw --version');
       onProgress(const SetupState(
         step: SetupStep.installingOpenClaw,
         progress: 1.0,
