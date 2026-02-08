@@ -634,20 +634,76 @@ process.cwd = function() {
 """.trimIndent()
         File(bypassDir, "cwd-fix.js").writeText(cwdFixContent)
 
-        // 2. Node wrapper — loads cwd fix then runs the target script.
+        // 2. Node wrapper — patches broken syscalls then runs the target script.
         //    Used during bootstrap (where NODE_OPTIONS must be unset).
         //    Usage: node /root/.openclawd/node-wrapper.js <script> [args...]
+        //    Patches: process.cwd (getcwd ENOSYS), fs.mkdir* (mkdirat ENOSYS)
         val wrapperContent = """
 // OpenClawd Node Wrapper - Auto-generated
-// Patches process.cwd, then loads the script from argv[2+]
+// Patches broken proot syscalls, then loads the target script.
+
+// 1. Fix process.cwd() — getcwd() returns ENOSYS in proot
 const _origCwd = process.cwd;
 process.cwd = function() {
   try { return _origCwd.call(process); }
   catch(e) { return process.env.HOME || '/root'; }
 };
+
+// 2. Fix fs.mkdir — mkdirat() returns ENOSYS/ENOENT in proot.
+//    Patch to create each path component individually and tolerate errors.
+const _fs = require('fs');
+const _path = require('path');
+const _origMkdirSync = _fs.mkdirSync;
+_fs.mkdirSync = function(p, options) {
+  try {
+    return _origMkdirSync.call(_fs, p, options);
+  } catch(e) {
+    if (e.code === 'ENOSYS' || e.code === 'ENOENT') {
+      // Try creating each component one by one
+      const parts = _path.resolve(p).split(_path.sep).filter(Boolean);
+      let current = '';
+      for (const part of parts) {
+        current += _path.sep + part;
+        try { _origMkdirSync.call(_fs, current); }
+        catch(e2) { if (e2.code !== 'EEXIST' && e2.code !== 'EISDIR') {
+          // Last resort: try via shell (sync)
+          try { require('child_process').execFileSync('/bin/mkdir', ['-p', p], {stdio:'ignore'}); return; }
+          catch(e3) { /* give up on this component */ }
+        }}
+      }
+      return;
+    }
+    throw e;
+  }
+};
+const _origMkdir = _fs.mkdir;
+_fs.mkdir = function(p, options, cb) {
+  if (typeof options === 'function') { cb = options; options = undefined; }
+  try {
+    _fs.mkdirSync(p, options);
+    if (cb) cb(null);
+  } catch(e) {
+    if (cb) cb(e); else throw e;
+  }
+};
+// Also patch promises version
+const _fsp = _fs.promises;
+if (_fsp) {
+  const _origMkdirP = _fsp.mkdir;
+  _fsp.mkdir = async function(p, options) {
+    try { return await _origMkdirP.call(_fsp, p, options); }
+    catch(e) {
+      if (e.code === 'ENOSYS' || e.code === 'ENOENT') {
+        _fs.mkdirSync(p, options); return;
+      }
+      throw e;
+    }
+  };
+}
+
+// Load target script
 const script = process.argv[2];
 if (script) {
-  // Shift argv so the target script sees correct args
   process.argv = [process.argv[0], script, ...process.argv.slice(3)];
   require(script);
 } else {
