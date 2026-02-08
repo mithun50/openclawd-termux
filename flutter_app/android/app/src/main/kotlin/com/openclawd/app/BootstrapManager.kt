@@ -903,25 +903,35 @@ _fs.watch = function(filename, options, listener) {
 
 // ====================================================================
 // 7. child_process.spawn — fork/posix_spawn ENOSYS in proot.
-//    IMPORTANT: Return FAILURE (not success) so callers know the command
-//    didn't run. Returning fake success causes npm to expect output files
-//    (like git clone results) that don't exist.
+//    Command-aware mock:
+//    - git: return FAILURE (128) — npm must know git didn't work so it
+//      doesn't look for cloned files that don't exist
+//    - everything else: return SUCCESS (0) — npm's internal spawns
+//      (audit, metadata, optional checks) should not block installation
 // ====================================================================
 const _cp = require('child_process');
 const _EventEmitter = require('events');
+
+// Commands that produce side effects (files). Must return failure.
+function _isSideEffectCmd(cmd) {
+  const base = String(cmd).split('/').pop();
+  return base === 'git' || base === 'node-gyp' || base === 'cmake' || base === 'make';
+}
+
 const _origSpawn = _cp.spawn;
 _cp.spawn = function(cmd, args, options) {
   try {
     const child = _origSpawn.call(_cp, cmd, args, options);
     child.on('error', (err) => {
       if (err.code === 'ENOSYS') {
-        // Signal failure so callers don't expect side effects
-        child.emit('close', 1, null);
+        const code = _isSideEffectCmd(cmd) ? 128 : 0;
+        child.emit('close', code, null);
       }
     });
     return child;
   } catch(e) {
     if (e.code === 'ENOSYS') {
+      const exitCode = _isSideEffectCmd(cmd) ? 128 : 0;
       const fake = new _EventEmitter();
       fake.stdout = new (require('stream').Readable)({ read() { this.push(null); } });
       fake.stderr = new (require('stream').Readable)({ read() { this.push(null); } });
@@ -934,8 +944,8 @@ _cp.spawn = function(cmd, args, options) {
       fake.connected = false;
       fake.disconnect = function() {};
       process.nextTick(() => {
-        fake.exitCode = 1;
-        fake.emit('close', 1, null);
+        fake.exitCode = exitCode;
+        fake.emit('close', exitCode, null);
       });
       return fake;
     }
@@ -947,17 +957,19 @@ _cp.spawnSync = function(cmd, args, options) {
   try {
     const r = _origSpawnSync.call(_cp, cmd, args, options);
     if (r.error && r.error.code === 'ENOSYS') {
-      return { status: 1, signal: null, stdout: Buffer.alloc(0),
-               stderr: Buffer.from('spawn ENOSYS\n'),
-               pid: 0, output: [null, Buffer.alloc(0), Buffer.from('spawn ENOSYS\n')],
+      const code = _isSideEffectCmd(cmd) ? 128 : 0;
+      return { status: code, signal: null, stdout: Buffer.alloc(0),
+               stderr: Buffer.alloc(0),
+               pid: 0, output: [null, Buffer.alloc(0), Buffer.alloc(0)],
                error: null };
     }
     return r;
   } catch(e) {
     if (e.code === 'ENOSYS') {
-      return { status: 1, signal: null, stdout: Buffer.alloc(0),
-               stderr: Buffer.from('spawn ENOSYS\n'),
-               pid: 0, output: [null, Buffer.alloc(0), Buffer.from('spawn ENOSYS\n')],
+      const code = _isSideEffectCmd(cmd) ? 128 : 0;
+      return { status: code, signal: null, stdout: Buffer.alloc(0),
+               stderr: Buffer.alloc(0),
+               pid: 0, output: [null, Buffer.alloc(0), Buffer.alloc(0)],
                error: null };
     }
     throw e;
@@ -971,7 +983,8 @@ _cp.execFile = function(file, args, options, cb) {
   try { return _origExecFile.call(_cp, file, args, options, cb); }
   catch(e) {
     if (e.code === 'ENOSYS') {
-      if (cb) cb(Object.assign(new Error('spawn ENOSYS'), {code:'ENOSYS'}), '', '');
+      const code = _isSideEffectCmd(file) ? 128 : 0;
+      if (cb) cb(code ? Object.assign(new Error('spawn ENOSYS'), {code:'ENOSYS'}) : null, '', '');
       return;
     }
     throw e;
@@ -981,7 +994,8 @@ const _origExecFileSync = _cp.execFileSync;
 _cp.execFileSync = function(file, args, options) {
   try { return _origExecFileSync.call(_cp, file, args, options); }
   catch(e) {
-    if (e.code === 'ENOSYS' || (e.status === 1 && e.stderr && e.stderr.toString().includes('ENOSYS'))) {
+    if (e.code === 'ENOSYS') {
+      if (_isSideEffectCmd(file)) throw e;
       return Buffer.alloc(0);
     }
     throw e;
