@@ -211,7 +211,7 @@ class BootstrapService {
       // Also unset NODE_OPTIONS — the bionic-bypass preload triggers
       // process.cwd() during CJS module loading, which returns ENOSYS
       // in proot. Bionic-bypass is only needed for the gateway, not install.
-      const nodeCmd = 'cd /tmp && unset NODE_OPTIONS && node';
+      const nodeCmd = 'unset NODE_OPTIONS; node';
       final npmCli = '/usr/lib/node_modules/npm/bin/npm-cli.js';
       await NativeBridge.runInProot(
         '$nodeCmd --version && $nodeCmd $npmCli --version',
