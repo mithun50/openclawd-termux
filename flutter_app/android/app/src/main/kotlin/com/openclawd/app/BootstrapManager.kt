@@ -701,6 +701,59 @@ if (_fsp) {
   };
 }
 
+// 3. Fix child_process.spawn — fork/posix_spawn returns ENOSYS in proot.
+//    npm spawns subprocesses for optional operations (audit, scripts).
+//    Patch to return a mock process that exits cleanly on ENOSYS.
+const _cp = require('child_process');
+const _EventEmitter = require('events');
+const _origSpawn = _cp.spawn;
+_cp.spawn = function(cmd, args, options) {
+  try {
+    const child = _origSpawn.call(_cp, cmd, args, options);
+    child.on('error', (err) => {
+      if (err.code === 'ENOSYS') {
+        // Suppress ENOSYS — treat as if the process exited normally
+        child.emit('close', 0);
+      }
+    });
+    return child;
+  } catch(e) {
+    if (e.code === 'ENOSYS') {
+      // Return a fake child process that immediately exits
+      const fake = new _EventEmitter();
+      fake.stdout = new _EventEmitter();
+      fake.stderr = new _EventEmitter();
+      fake.stdin = { write(){}, end(){}, on(){}, once(){} };
+      fake.pid = 0;
+      fake.kill = function(){};
+      fake.ref = function(){};
+      fake.unref = function(){};
+      process.nextTick(() => {
+        fake.stdout.emit('end');
+        fake.stderr.emit('end');
+        fake.emit('close', 0);
+      });
+      return fake;
+    }
+    throw e;
+  }
+};
+const _origSpawnSync = _cp.spawnSync;
+_cp.spawnSync = function(cmd, args, options) {
+  try {
+    const r = _origSpawnSync.call(_cp, cmd, args, options);
+    if (r.error && r.error.code === 'ENOSYS') {
+      return { status: 0, stdout: Buffer.alloc(0), stderr: Buffer.alloc(0), pid: 0, output: [null, Buffer.alloc(0), Buffer.alloc(0)], error: null };
+    }
+    return r;
+  } catch(e) {
+    if (e.code === 'ENOSYS') {
+      return { status: 0, stdout: Buffer.alloc(0), stderr: Buffer.alloc(0), pid: 0, output: [null, Buffer.alloc(0), Buffer.alloc(0)], error: null };
+    }
+    throw e;
+  }
+};
+
 // Load target script
 const script = process.argv[2];
 if (script) {
