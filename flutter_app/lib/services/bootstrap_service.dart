@@ -208,9 +208,13 @@ class BootstrapService {
       ));
       // npm's shebang is #!/usr/bin/env node — env needs to fork+exec
       // node, which fails in proot (level 2+ fork). Call node directly.
+      // Also unset NODE_OPTIONS — the bionic-bypass preload triggers
+      // process.cwd() during CJS module loading, which returns ENOSYS
+      // in proot. Bionic-bypass is only needed for the gateway, not install.
+      const nodeCmd = 'cd /tmp && unset NODE_OPTIONS && node';
       final npmCli = '/usr/lib/node_modules/npm/bin/npm-cli.js';
       await NativeBridge.runInProot(
-        'node --version && node $npmCli --version',
+        '$nodeCmd --version && $nodeCmd $npmCli --version',
       );
       onProgress(const SetupState(
         step: SetupStep.installingNode,
@@ -229,7 +233,7 @@ class BootstrapService {
       // (sharp, node-pty) download prebuilts in postinstall — we handle
       // sharp manually below; node-pty is optional for gateway mode.
       await NativeBridge.runInProot(
-        'node $npmCli install -g openclaw --ignore-scripts',
+        '$nodeCmd $npmCli install -g openclaw --ignore-scripts',
         timeout: 1800,
       );
 
@@ -243,8 +247,8 @@ class BootstrapService {
       try {
         await NativeBridge.runInProot(
           'cd /usr/lib/node_modules/openclaw/node_modules/sharp && '
-          'node install/check 2>/dev/null || '
-          'node $npmCli rebuild sharp --ignore-scripts 2>/dev/null; '
+          '$nodeCmd install/check 2>/dev/null || '
+          '$nodeCmd $npmCli rebuild sharp --ignore-scripts 2>/dev/null; '
           'echo sharp_done',
           timeout: 300,
         );
@@ -258,7 +262,7 @@ class BootstrapService {
         message: 'Verifying OpenClaw...',
       ));
       await NativeBridge.runInProot(
-        'node $npmCli list -g openclaw',
+        '$nodeCmd $npmCli list -g openclaw',
       );
       onProgress(const SetupState(
         step: SetupStep.installingOpenClaw,
