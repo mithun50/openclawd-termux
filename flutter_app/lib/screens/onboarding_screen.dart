@@ -32,7 +32,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   bool _loading = true;
   bool _finished = false;
   String? _error;
-  final _tokenUrlRegex = RegExp(r'https?://(?:localhost|127\.0\.0\.1):18789[^\s\x1b]*');
+  final _tokenUrlRegex = RegExp(r'https?://(?:localhost|127\.0\.0\.1):18789[^\s]*');
+  static final _ansiEscape = RegExp(r'\x1b\[[0-9;]*[a-zA-Z]');
   String _outputBuffer = '';
 
   static const _fontFallback = [
@@ -86,13 +87,15 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       _pty!.output.cast<List<int>>().listen((data) {
         final text = utf8.decode(data, allowMalformed: true);
         _terminal.write(text);
-        // Scan output for token URL (e.g. http://127.0.0.1:18789/v1?token=...)
+        // Scan output for token URL (e.g. http://localhost:18789/#token=...)
         _outputBuffer += text;
         // Keep buffer manageable
         if (_outputBuffer.length > 4096) {
           _outputBuffer = _outputBuffer.substring(_outputBuffer.length - 2048);
         }
-        final match = _tokenUrlRegex.firstMatch(_outputBuffer);
+        // Strip ANSI escape codes before matching so URLs aren't truncated
+        final clean = _outputBuffer.replaceAll(_ansiEscape, '');
+        final match = _tokenUrlRegex.firstMatch(clean);
         if (match != null) {
           _saveTokenUrl(match.group(0)!);
         }
