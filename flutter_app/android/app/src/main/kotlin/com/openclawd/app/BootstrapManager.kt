@@ -995,12 +995,13 @@ _fs.watch = function(filename, options, listener) {
 };
 
 // ====================================================================
-// 7. child_process.spawn — fork/posix_spawn ENOSYS in proot.
+// 7. child_process.spawn — handle ENOSYS (proot) and ENOENT (missing binary).
 //    Command-aware mock:
-//    - git: return FAILURE (128) — npm must know git didn't work so it
-//      doesn't look for cloned files that don't exist
-//    - everything else: return SUCCESS (0) — npm's internal spawns
-//      (audit, metadata, optional checks) should not block installation
+//    - Side-effect cmds (git, node-gyp, cmake, make): return FAILURE (128)
+//      so npm doesn't look for files they were supposed to create
+//    - Everything else: return SUCCESS (0) — npm internals proceed
+//    Handles both ENOSYS (proot syscall fail) and ENOENT (binary not found,
+//    e.g. git not installed in rootfs).
 // ====================================================================
 const _cp = require('child_process');
 const _EventEmitter = require('events');
@@ -1011,36 +1012,53 @@ function _isSideEffectCmd(cmd) {
   return base === 'git' || base === 'node-gyp' || base === 'cmake' || base === 'make';
 }
 
+// Should this error be mocked? ENOSYS always, ENOENT for side-effect cmds.
+function _shouldMock(errCode, cmd) {
+  if (errCode === 'ENOSYS') return true;
+  if (errCode === 'ENOENT' && _isSideEffectCmd(cmd)) return true;
+  return false;
+}
+
+function _makeFakeChild(exitCode) {
+  const fake = new _EventEmitter();
+  fake.stdout = new (require('stream').Readable)({ read() { this.push(null); } });
+  fake.stderr = new (require('stream').Readable)({ read() { this.push(null); } });
+  fake.stdin = new (require('stream').Writable)({ write(c,e,cb) { cb(); } });
+  fake.pid = 0;
+  fake.exitCode = null;
+  fake.kill = function() { return false; };
+  fake.ref = function() { return this; };
+  fake.unref = function() { return this; };
+  fake.connected = false;
+  fake.disconnect = function() {};
+  process.nextTick(() => {
+    fake.exitCode = exitCode;
+    fake.emit('close', exitCode, null);
+  });
+  return fake;
+}
+
+function _makeFakeSyncResult(code) {
+  return { status: code, signal: null, stdout: Buffer.alloc(0),
+           stderr: Buffer.alloc(0),
+           pid: 0, output: [null, Buffer.alloc(0), Buffer.alloc(0)],
+           error: null };
+}
+
 const _origSpawn = _cp.spawn;
 _cp.spawn = function(cmd, args, options) {
   try {
     const child = _origSpawn.call(_cp, cmd, args, options);
     child.on('error', (err) => {
-      if (err.code === 'ENOSYS') {
+      if (_shouldMock(err.code, cmd)) {
         const code = _isSideEffectCmd(cmd) ? 128 : 0;
         child.emit('close', code, null);
       }
     });
     return child;
   } catch(e) {
-    if (e.code === 'ENOSYS') {
-      const exitCode = _isSideEffectCmd(cmd) ? 128 : 0;
-      const fake = new _EventEmitter();
-      fake.stdout = new (require('stream').Readable)({ read() { this.push(null); } });
-      fake.stderr = new (require('stream').Readable)({ read() { this.push(null); } });
-      fake.stdin = new (require('stream').Writable)({ write(c,e,cb) { cb(); } });
-      fake.pid = 0;
-      fake.exitCode = null;
-      fake.kill = function() { return false; };
-      fake.ref = function() { return this; };
-      fake.unref = function() { return this; };
-      fake.connected = false;
-      fake.disconnect = function() {};
-      process.nextTick(() => {
-        fake.exitCode = exitCode;
-        fake.emit('close', exitCode, null);
-      });
-      return fake;
+    if (_shouldMock(e.code, cmd)) {
+      return _makeFakeChild(_isSideEffectCmd(cmd) ? 128 : 0);
     }
     throw e;
   }
@@ -1049,21 +1067,13 @@ const _origSpawnSync = _cp.spawnSync;
 _cp.spawnSync = function(cmd, args, options) {
   try {
     const r = _origSpawnSync.call(_cp, cmd, args, options);
-    if (r.error && r.error.code === 'ENOSYS') {
-      const code = _isSideEffectCmd(cmd) ? 128 : 0;
-      return { status: code, signal: null, stdout: Buffer.alloc(0),
-               stderr: Buffer.alloc(0),
-               pid: 0, output: [null, Buffer.alloc(0), Buffer.alloc(0)],
-               error: null };
+    if (r.error && _shouldMock(r.error.code, cmd)) {
+      return _makeFakeSyncResult(_isSideEffectCmd(cmd) ? 128 : 0);
     }
     return r;
   } catch(e) {
-    if (e.code === 'ENOSYS') {
-      const code = _isSideEffectCmd(cmd) ? 128 : 0;
-      return { status: code, signal: null, stdout: Buffer.alloc(0),
-               stderr: Buffer.alloc(0),
-               pid: 0, output: [null, Buffer.alloc(0), Buffer.alloc(0)],
-               error: null };
+    if (_shouldMock(e.code, cmd)) {
+      return _makeFakeSyncResult(_isSideEffectCmd(cmd) ? 128 : 0);
     }
     throw e;
   }
@@ -1075,9 +1085,9 @@ _cp.execFile = function(file, args, options, cb) {
   if (typeof options === 'function') { cb = options; options = {}; }
   try { return _origExecFile.call(_cp, file, args, options, cb); }
   catch(e) {
-    if (e.code === 'ENOSYS') {
+    if (_shouldMock(e.code, file)) {
       const code = _isSideEffectCmd(file) ? 128 : 0;
-      if (cb) cb(code ? Object.assign(new Error('spawn ENOSYS'), {code:'ENOSYS'}) : null, '', '');
+      if (cb) cb(code ? Object.assign(new Error('spawn failed'), {code:e.code}) : null, '', '');
       return;
     }
     throw e;
@@ -1087,7 +1097,7 @@ const _origExecFileSync = _cp.execFileSync;
 _cp.execFileSync = function(file, args, options) {
   try { return _origExecFileSync.call(_cp, file, args, options); }
   catch(e) {
-    if (e.code === 'ENOSYS') {
+    if (_shouldMock(e.code, file)) {
       if (_isSideEffectCmd(file)) throw e;
       return Buffer.alloc(0);
     }
