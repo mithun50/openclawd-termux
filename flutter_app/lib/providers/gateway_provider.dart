@@ -15,6 +15,8 @@ class GatewayProvider extends ChangeNotifier {
       _state = state;
       notifyListeners();
     });
+    // Check if gateway is already running (e.g. after app restart)
+    _gatewayService.init();
   }
 
   Future<void> start() async {

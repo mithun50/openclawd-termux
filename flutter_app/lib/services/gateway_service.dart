@@ -20,6 +20,43 @@ class GatewayService {
     _stateController.add(_state);
   }
 
+  /// Check if the gateway is already running (e.g. after app restart)
+  /// and sync the UI state accordingly.
+  Future<void> init() async {
+    final prefs = PreferencesService();
+    await prefs.init();
+    final savedUrl = prefs.dashboardUrl;
+
+    final alreadyRunning = await NativeBridge.isGatewayRunning();
+    if (alreadyRunning) {
+      _updateState(_state.copyWith(
+        status: GatewayStatus.starting,
+        dashboardUrl: savedUrl,
+        logs: [..._state.logs, '[INFO] Gateway process detected, reconnecting...'],
+      ));
+
+      // Subscribe to log stream from the running service
+      _logSubscription = NativeBridge.gatewayLogStream.listen((log) {
+        final logs = [..._state.logs, log];
+        if (logs.length > 500) {
+          logs.removeRange(0, logs.length - 500);
+        }
+        String? dashboardUrl;
+        final cleanLog = log.replaceAll(AppConstants.ansiEscape, '');
+        final urlMatch = _tokenUrlRegex.firstMatch(cleanLog);
+        if (urlMatch != null) {
+          dashboardUrl = urlMatch.group(0);
+          final prefs = PreferencesService();
+          prefs.init().then((_) => prefs.dashboardUrl = dashboardUrl);
+        }
+        _updateState(_state.copyWith(logs: logs, dashboardUrl: dashboardUrl));
+      });
+
+      // Run a health check to confirm it's actually responding
+      _startHealthCheck();
+    }
+  }
+
   Future<void> start() async {
     // Load saved token URL from preferences
     final prefs = PreferencesService();
