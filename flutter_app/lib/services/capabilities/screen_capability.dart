@@ -60,7 +60,7 @@ class ScreenCapability extends CapabilityHandler {
       final b64 = base64Encode(bytes);
       await file.delete().catchError((_) => file);
 
-      return NodeFrame.response('', result: {
+      return NodeFrame.response('', payload: {
         'video': b64,
         'format': 'mp4',
         'durationMs': durationMs,

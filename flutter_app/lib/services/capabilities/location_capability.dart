@@ -50,7 +50,7 @@ class LocationCapability extends CapabilityHandler {
         desiredAccuracy: LocationAccuracy.high,
       );
 
-      return NodeFrame.response('', result: {
+      return NodeFrame.response('', payload: {
         'lat': position.latitude,
         'lng': position.longitude,
         'accuracy': position.accuracy,

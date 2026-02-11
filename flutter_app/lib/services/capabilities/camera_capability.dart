@@ -60,7 +60,7 @@ class CameraCapability extends CapabilityHandler {
       final b64 = base64Encode(bytes);
       // Clean up temp file
       await File(file.path).delete().catchError((_) => File(file.path));
-      return NodeFrame.response('', result: {
+      return NodeFrame.response('', payload: {
         'image': b64,
         'format': 'jpg',
       });
@@ -82,7 +82,7 @@ class CameraCapability extends CapabilityHandler {
       final bytes = await File(file.path).readAsBytes();
       final b64 = base64Encode(bytes);
       await File(file.path).delete().catchError((_) => File(file.path));
-      return NodeFrame.response('', result: {
+      return NodeFrame.response('', payload: {
         'video': b64,
         'format': 'mp4',
         'durationMs': durationMs,

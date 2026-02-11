@@ -45,7 +45,7 @@ class CanvasCapability extends CapabilityHandler {
       });
     }
     // WebView navigation is handled at the provider layer
-    return NodeFrame.response('', result: {
+    return NodeFrame.response('', payload: {
       'status': 'navigated',
       'url': url,
     });
@@ -60,13 +60,13 @@ class CanvasCapability extends CapabilityHandler {
       });
     }
     // JS evaluation is delegated to the WebView in the widget layer
-    return NodeFrame.response('', result: {
+    return NodeFrame.response('', payload: {
       'status': 'evaluated',
     });
   }
 
   Future<NodeFrame> _snapshot(Map<String, dynamic> params) async {
-    return NodeFrame.response('', result: {
+    return NodeFrame.response('', payload: {
       'status': 'snapshot_not_available',
       'message': 'Canvas snapshot requires active WebView context',
     });

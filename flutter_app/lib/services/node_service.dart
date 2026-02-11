@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import '../constants.dart';
 import '../models/node_frame.dart';
 import '../models/node_state.dart';
@@ -99,43 +100,16 @@ class NodeService {
         }
         break;
 
-      case 'challenge':
+      case 'connect.challenge':
         _updateState(_state.copyWith(status: NodeStatus.challenging));
-        final nonce = frame.data?['nonce'] as String?;
+        final nonce = frame.payload?['nonce'] as String?;
         if (nonce == null) {
           _log('[NODE] Challenge missing nonce');
           return;
         }
         _log('[NODE] Challenge received, signing...');
         try {
-          final signature = await _identity.signChallenge(nonce);
-          final prefs = PreferencesService();
-          await prefs.init();
-          final token = prefs.nodeDeviceToken;
-
-          final connectFrame = NodeFrame.request('node.connect', {
-            'deviceId': _identity.deviceId,
-            'signature': signature,
-            'role': AppConstants.nodeRole,
-            if (token != null) 'token': token,
-          });
-          final response = await _ws.sendRequest(connectFrame);
-
-          if (response.isError) {
-            final code = response.error?['code'];
-            if (code == 'TOKEN_INVALID' || code == 'NOT_PAIRED') {
-              _log('[NODE] Token invalid or not paired, requesting pairing...');
-              await _requestPairing();
-            } else {
-              _updateState(_state.copyWith(
-                status: NodeStatus.error,
-                errorMessage: response.error?['message'] as String? ?? 'Connect failed',
-              ));
-              _log('[NODE] Connect error: ${response.error}');
-            }
-          } else {
-            _onConnected(response);
-          }
+          await _sendConnect(nonce);
         } catch (e) {
           _log('[NODE] Challenge/connect error: $e');
           _updateState(_state.copyWith(
@@ -144,10 +118,69 @@ class NodeService {
           ));
         }
         break;
+    }
+  }
 
-      case 'hello-ok':
-        _onConnected(frame);
-        break;
+  /// Build and send the `connect` request per Gateway Protocol v3.
+  Future<void> _sendConnect(String nonce) async {
+    final signature = await _identity.signChallenge(nonce);
+    final prefs = PreferencesService();
+    await prefs.init();
+    final token = prefs.nodeDeviceToken;
+
+    final publicKeyBytes = base64Decode(
+      prefs.nodePublicKey ?? '',
+    );
+    final publicKeyHex = publicKeyBytes.isNotEmpty
+        ? publicKeyBytes.map((b) => b.toRadixString(16).padLeft(2, '0')).join()
+        : _identity.deviceId;
+
+    final connectFrame = NodeFrame.request('connect', {
+      'minProtocol': 3,
+      'maxProtocol': 3,
+      'client': {
+        'id': 'openclaw-android-node',
+        'version': AppConstants.version,
+        'platform': 'android',
+        'mode': 'node',
+      },
+      'role': AppConstants.nodeRole,
+      if (token != null) 'auth': {'token': token},
+      'device': {
+        'id': _identity.deviceId,
+        'publicKey': publicKeyHex,
+        'signature': signature,
+        'nonce': nonce,
+        'signedAt': DateTime.now().millisecondsSinceEpoch,
+      },
+    });
+
+    final response = await _ws.sendRequest(connectFrame);
+
+    if (response.isOk) {
+      // hello-ok
+      final authPayload = response.payload?['auth'] as Map<String, dynamic>?;
+      final deviceToken = authPayload?['deviceToken'] as String?;
+      if (deviceToken != null) {
+        prefs.nodeDeviceToken = deviceToken;
+      }
+      _onConnected(response);
+    } else if (response.isError) {
+      final errPayload = response.payload ?? response.error ?? {};
+      final code = errPayload['code'] as String? ?? '';
+      final message = errPayload['message'] as String? ?? 'Connect failed';
+
+      if (code == 'TOKEN_INVALID' || code == 'NOT_PAIRED' ||
+          code == 'DEVICE_NOT_PAIRED') {
+        _log('[NODE] Not paired, requesting pairing...');
+        await _requestPairing();
+      } else {
+        _updateState(_state.copyWith(
+          status: NodeStatus.error,
+          errorMessage: message,
+        ));
+        _log('[NODE] Connect error: $code - $message');
+      }
     }
   }
 
@@ -181,24 +214,25 @@ class NodeService {
       );
 
       if (response.isError) {
+        final errPayload = response.payload ?? response.error ?? {};
         _updateState(_state.copyWith(
           status: NodeStatus.error,
-          errorMessage: response.error?['message'] as String? ?? 'Pairing failed',
+          errorMessage: errPayload['message'] as String? ?? 'Pairing failed',
         ));
-        _log('[NODE] Pairing error: ${response.error}');
+        _log('[NODE] Pairing error: $errPayload');
         return;
       }
 
-      final code = response.result?['code'] as String?;
-      final token = response.result?['token'] as String?;
+      final respPayload = response.payload ?? {};
+      final code = respPayload['code'] as String?;
+      final token = respPayload['token'] as String? ??
+          (respPayload['auth'] as Map?)?['deviceToken'] as String?;
 
       if (token != null) {
-        // Already approved (auto-pair flow)
         final prefs = PreferencesService();
         await prefs.init();
         prefs.nodeDeviceToken = token;
         _log('[NODE] Pairing approved, token received');
-        // Reconnect with token
         await Future.delayed(const Duration(milliseconds: 500));
         await _ws.disconnect();
         await connect();
@@ -217,7 +251,6 @@ class NodeService {
           try {
             await NativeBridge.runInProot('openclaw nodes approve $code');
             _log('[NODE] Auto-approve command sent');
-            // Wait for gateway to process approval
             await Future.delayed(const Duration(milliseconds: 500));
             await _ws.disconnect();
             await connect();
@@ -254,7 +287,7 @@ class NodeService {
       if (result.isError) {
         _ws.send(NodeFrame.response(frame.id!, error: result.error));
       } else {
-        _ws.send(NodeFrame.response(frame.id!, result: result.result));
+        _ws.send(NodeFrame.response(frame.id!, payload: result.payload));
       }
     } catch (e) {
       _ws.send(NodeFrame.response(frame.id!, error: {

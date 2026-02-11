@@ -34,7 +34,7 @@ class SensorCapability extends CapabilityHandler {
   }
 
   Future<NodeFrame> _list() async {
-    return NodeFrame.response('', result: {
+    return NodeFrame.response('', payload: {
       'sensors': [
         'accelerometer',
         'gyroscope',
@@ -50,9 +50,9 @@ class SensorCapability extends CapabilityHandler {
     try {
       final data = await _channel.invokeMethod('readSensor', {'sensor': sensor});
       if (data != null) {
-        return NodeFrame.response('', result: Map<String, dynamic>.from(data as Map));
+        return NodeFrame.response('', payload: Map<String, dynamic>.from(data as Map));
       }
-      return NodeFrame.response('', result: {
+      return NodeFrame.response('', payload: {
         'sensor': sensor,
         'status': 'no_data',
         'message': 'Sensor data not available. Sensor reading requires native integration.',

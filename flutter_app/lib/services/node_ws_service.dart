@@ -20,7 +20,7 @@ class NodeWsService {
   bool get isConnected => _connected;
 
   Future<void> connect(String host, int port) async {
-    _url = 'ws://$host:$port/ws/node';
+    _url = 'ws://$host:$port';
     _shouldReconnect = true;
     _reconnectAttempt = 0;
     await _doConnect();

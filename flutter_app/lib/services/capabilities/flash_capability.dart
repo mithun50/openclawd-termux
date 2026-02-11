@@ -45,7 +45,7 @@ class FlashCapability extends CapabilityHandler {
       case 'flash.toggle':
         return _setTorch(!_torchOn);
       case 'flash.status':
-        return NodeFrame.response('', result: {'on': _torchOn});
+        return NodeFrame.response('', payload: {'on': _torchOn});
       default:
         return NodeFrame.response('', error: {
           'code': 'UNKNOWN_COMMAND',
@@ -59,7 +59,7 @@ class FlashCapability extends CapabilityHandler {
       final controller = await _getController();
       await controller.setFlashMode(on ? FlashMode.torch : FlashMode.off);
       _torchOn = on;
-      return NodeFrame.response('', result: {'on': _torchOn});
+      return NodeFrame.response('', payload: {'on': _torchOn});
     } catch (e) {
       return NodeFrame.response('', error: {
         'code': 'FLASH_ERROR',

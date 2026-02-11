@@ -46,12 +46,12 @@ class VibrationCapability extends CapabilityHandler {
         // Simple vibrate using platform channel
         await _channel.invokeMethod('vibrate', {'durationMs': durationMs});
       }
-      return NodeFrame.response('', result: {'status': 'vibrated'});
+      return NodeFrame.response('', payload: {'status': 'vibrated'});
     } catch (e) {
       // Fallback to HapticFeedback
       try {
         await HapticFeedback.heavyImpact();
-        return NodeFrame.response('', result: {'status': 'vibrated_fallback'});
+        return NodeFrame.response('', payload: {'status': 'vibrated_fallback'});
       } catch (e2) {
         return NodeFrame.response('', error: {
           'code': 'HAPTIC_ERROR',
