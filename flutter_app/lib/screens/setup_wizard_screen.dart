@@ -5,6 +5,7 @@ import '../models/setup_state.dart';
 import '../providers/setup_provider.dart';
 import '../widgets/progress_step.dart';
 import 'onboarding_screen.dart';
+import 'packages_screen.dart';
 
 class SetupWizardScreen extends StatefulWidget {
   const SetupWizardScreen({super.key});
@@ -85,7 +86,20 @@ class _SetupWizardScreenState extends State<SetupWizardScreen> {
                     ),
                     const SizedBox(height: 16),
                   ],
-                  if (state.isComplete)
+                  if (state.isComplete) ...[
+                    SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton.icon(
+                        onPressed: () => Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => const PackagesScreen(),
+                          ),
+                        ),
+                        icon: const Icon(Icons.extension),
+                        label: const Text('Install Optional Packages'),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
                     SizedBox(
                       width: double.infinity,
                       child: FilledButton.icon(
@@ -93,7 +107,8 @@ class _SetupWizardScreenState extends State<SetupWizardScreen> {
                         icon: const Icon(Icons.arrow_forward),
                         label: const Text('Configure API Keys'),
                       ),
-                    )
+                    ),
+                  ]
                   else if (!_started || state.hasError)
                     SizedBox(
                       width: double.infinity,

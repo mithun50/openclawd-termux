@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../constants.dart';
@@ -20,6 +21,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
   String _prootPath = '';
   Map<String, dynamic> _status = {};
   bool _loading = true;
+  bool _goInstalled = false;
+  bool _brewInstalled = false;
 
   @override
   void initState() {
@@ -37,11 +40,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
       final status = await NativeBridge.getBootstrapStatus();
       final batteryOptimized = await NativeBridge.isBatteryOptimized();
 
+      // Check optional package statuses
+      final filesDir = await NativeBridge.getFilesDir();
+      final rootfs = '$filesDir/rootfs/ubuntu';
+      final goInstalled = File('$rootfs/usr/bin/go').existsSync();
+      final brewInstalled =
+          File('$rootfs/home/linuxbrew/.linuxbrew/bin/brew').existsSync();
+
       setState(() {
         _batteryOptimized = batteryOptimized;
         _arch = arch;
         _prootPath = prootPath;
         _status = status;
+        _goInstalled = goInstalled;
+        _brewInstalled = brewInstalled;
         _loading = false;
       });
     } catch (e) {
@@ -119,6 +131,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       ? 'Installed'
                       : 'Not installed'),
                   leading: const Icon(Icons.cloud),
+                ),
+                ListTile(
+                  title: const Text('Go (Golang)'),
+                  subtitle: Text(_goInstalled
+                      ? 'Installed'
+                      : 'Not installed'),
+                  leading: const Icon(Icons.code),
+                ),
+                ListTile(
+                  title: const Text('Homebrew'),
+                  subtitle: Text(_brewInstalled
+                      ? 'Installed'
+                      : 'Not installed'),
+                  leading: const Icon(Icons.local_drink),
                 ),
                 const Divider(),
                 _sectionHeader(theme, 'Maintenance'),

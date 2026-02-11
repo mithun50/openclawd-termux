@@ -8,6 +8,7 @@ import 'onboarding_screen.dart';
 import 'terminal_screen.dart';
 import 'web_dashboard_screen.dart';
 import 'logs_screen.dart';
+import 'packages_screen.dart';
 import 'settings_screen.dart';
 
 class DashboardScreen extends StatelessWidget {
@@ -83,6 +84,16 @@ class DashboardScreen extends StatelessWidget {
               trailing: const Icon(Icons.chevron_right),
               onTap: () => Navigator.of(context).push(
                 MaterialPageRoute(builder: (_) => const OnboardingScreen()),
+              ),
+            ),
+            StatusCard(
+              title: 'Packages',
+              subtitle: 'Install optional tools (Go, Homebrew)',
+              icon: Icons.extension,
+              color: Colors.orange,
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const PackagesScreen()),
               ),
             ),
             StatusCard(
