@@ -31,7 +31,8 @@ class GatewayService {
   }
 
   /// Check if the gateway is already running (e.g. after app restart)
-  /// and sync the UI state accordingly.
+  /// and sync the UI state accordingly.  If not running but auto-start
+  /// is enabled, start it automatically.
   Future<void> init() async {
     final prefs = PreferencesService();
     await prefs.init();
@@ -45,62 +46,50 @@ class GatewayService {
         logs: [..._state.logs, '[INFO] Gateway process detected, reconnecting...'],
       ));
 
-      // Subscribe to log stream from the running service
-      _logSubscription = NativeBridge.gatewayLogStream.listen((log) {
-        final logs = [..._state.logs, log];
-        if (logs.length > 500) {
-          logs.removeRange(0, logs.length - 500);
-        }
-        String? dashboardUrl;
-        final cleanLog = _cleanForUrl(log);
-        final urlMatch = _tokenUrlRegex.firstMatch(cleanLog);
-        if (urlMatch != null) {
-          dashboardUrl = urlMatch.group(0);
-          final prefs = PreferencesService();
-          prefs.init().then((_) => prefs.dashboardUrl = dashboardUrl);
-        }
-        _updateState(_state.copyWith(logs: logs, dashboardUrl: dashboardUrl));
-      });
-
-      // Run a health check to confirm it's actually responding
+      _subscribeLogs();
       _startHealthCheck();
+    } else if (prefs.autoStartGateway) {
+      _updateState(_state.copyWith(
+        logs: [..._state.logs, '[INFO] Auto-starting gateway...'],
+      ));
+      await start();
     }
   }
 
+  void _subscribeLogs() {
+    _logSubscription?.cancel();
+    _logSubscription = NativeBridge.gatewayLogStream.listen((log) {
+      final logs = [..._state.logs, log];
+      if (logs.length > 500) {
+        logs.removeRange(0, logs.length - 500);
+      }
+      String? dashboardUrl;
+      final cleanLog = _cleanForUrl(log);
+      final urlMatch = _tokenUrlRegex.firstMatch(cleanLog);
+      if (urlMatch != null) {
+        dashboardUrl = urlMatch.group(0);
+        final prefs = PreferencesService();
+        prefs.init().then((_) => prefs.dashboardUrl = dashboardUrl);
+      }
+      _updateState(_state.copyWith(logs: logs, dashboardUrl: dashboardUrl));
+    });
+  }
+
   Future<void> start() async {
-    // Load saved token URL from preferences
     final prefs = PreferencesService();
     await prefs.init();
     final savedUrl = prefs.dashboardUrl;
 
     _updateState(_state.copyWith(
       status: GatewayStatus.starting,
+      clearError: true,
       logs: [..._state.logs, '[INFO] Starting gateway...'],
       dashboardUrl: savedUrl,
     ));
 
     try {
       await NativeBridge.startGateway();
-
-      _logSubscription = NativeBridge.gatewayLogStream.listen((log) {
-        final logs = [..._state.logs, log];
-        // Keep last 500 lines
-        if (logs.length > 500) {
-          logs.removeRange(0, logs.length - 500);
-        }
-        // Parse log for token URL — strip ANSI, box-drawing, whitespace
-        String? dashboardUrl;
-        final cleanLog = _cleanForUrl(log);
-        final urlMatch = _tokenUrlRegex.firstMatch(cleanLog);
-        if (urlMatch != null) {
-          dashboardUrl = urlMatch.group(0);
-          // Persist clean URL for next startup
-          final prefs = PreferencesService();
-          prefs.init().then((_) => prefs.dashboardUrl = dashboardUrl);
-        }
-        _updateState(_state.copyWith(logs: logs, dashboardUrl: dashboardUrl));
-      });
-
+      _subscribeLogs();
       _startHealthCheck();
     } catch (e) {
       _updateState(_state.copyWith(

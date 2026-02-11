@@ -29,6 +29,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   Future<void> _loadSettings() async {
     await _prefs.init();
+    _autoStart = _prefs.autoStartGateway;
 
     try {
       final arch = await NativeBridge.getArch();
@@ -37,7 +38,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
       final batteryOptimized = await NativeBridge.isBatteryOptimized();
 
       setState(() {
-        _autoStart = _prefs.autoStartGateway;
         _batteryOptimized = batteryOptimized;
         _arch = arch;
         _prootPath = prootPath;
