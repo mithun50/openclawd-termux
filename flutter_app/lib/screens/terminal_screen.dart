@@ -26,10 +26,14 @@ class _TerminalScreenState extends State<TerminalScreen> {
   static final _boxDrawing = RegExp(r'[│┤├┬┴┼╮╯╰╭─╌╴╶┌┐└┘◇◆]+');
 
   static const _fontFallback = [
+    'Noto Sans Mono',
+    'Noto Sans Mono CJK SC',
+    'Noto Sans Mono CJK TC',
+    'Noto Sans Mono CJK JP',
     'Noto Color Emoji',
     'Noto Sans Symbols',
     'Noto Sans Symbols 2',
-    'Noto Sans Mono',
+    'monospace',
     'sans-serif',
   ];
 
@@ -359,6 +363,7 @@ class _TerminalScreenState extends State<TerminalScreen> {
             controller: _controller,
             textStyle: const TerminalStyle(
               fontSize: 14,
+              height: 1.0,
               fontFamily: 'monospace',
               fontFamilyFallback: _fontFallback,
             ),
