@@ -50,6 +50,13 @@ class AppConstants {
   static const int healthCheckIntervalMs = 5000;
   static const int maxAutoRestarts = 3;
 
+  // Node constants
+  static const int wsReconnectBaseMs = 350;
+  static const double wsReconnectMultiplier = 1.7;
+  static const int wsReconnectCapMs = 8000;
+  static const String nodeRole = 'node';
+  static const int pairingTimeoutMs = 300000;
+
   static const String channelName = 'com.nxg.openclawproot/native';
   static const String eventChannelName = 'com.nxg.openclawproot/gateway_logs';
 

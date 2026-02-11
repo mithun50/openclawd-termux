@@ -1,9 +1,12 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../constants.dart';
+import '../providers/node_provider.dart';
 import '../services/native_bridge.dart';
 import '../services/preferences_service.dart';
+import 'node_screen.dart';
 import 'setup_wizard_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
@@ -16,6 +19,7 @@ class SettingsScreen extends StatefulWidget {
 class _SettingsScreenState extends State<SettingsScreen> {
   final _prefs = PreferencesService();
   bool _autoStart = false;
+  bool _nodeEnabled = false;
   bool _batteryOptimized = true;
   String _arch = '';
   String _prootPath = '';
@@ -33,6 +37,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Future<void> _loadSettings() async {
     await _prefs.init();
     _autoStart = _prefs.autoStartGateway;
+    _nodeEnabled = _prefs.nodeEnabled;
 
     try {
       final arch = await NativeBridge.getArch();
@@ -98,6 +103,32 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     final optimized = await NativeBridge.isBatteryOptimized();
                     setState(() => _batteryOptimized = optimized);
                   },
+                ),
+                const Divider(),
+                _sectionHeader(theme, 'Node'),
+                SwitchListTile(
+                  title: const Text('Enable Node'),
+                  subtitle: const Text('Provide device capabilities to the gateway'),
+                  value: _nodeEnabled,
+                  onChanged: (value) {
+                    setState(() => _nodeEnabled = value);
+                    _prefs.nodeEnabled = value;
+                    final nodeProvider = context.read<NodeProvider>();
+                    if (value) {
+                      nodeProvider.enable();
+                    } else {
+                      nodeProvider.disable();
+                    }
+                  },
+                ),
+                ListTile(
+                  title: const Text('Node Configuration'),
+                  subtitle: const Text('Connection, pairing, and capabilities'),
+                  leading: const Icon(Icons.devices),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () => Navigator.of(context).push(
+                    MaterialPageRoute(builder: (_) => const NodeScreen()),
+                  ),
                 ),
                 const Divider(),
                 _sectionHeader(theme, 'System Info'),

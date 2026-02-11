@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'providers/setup_provider.dart';
 import 'providers/gateway_provider.dart';
+import 'providers/node_provider.dart';
 import 'screens/splash_screen.dart';
 
 class OpenClawApp extends StatelessWidget {
@@ -13,6 +14,13 @@ class OpenClawApp extends StatelessWidget {
       providers: [
         ChangeNotifierProvider(create: (_) => SetupProvider()),
         ChangeNotifierProvider(create: (_) => GatewayProvider()),
+        ChangeNotifierProxyProvider<GatewayProvider, NodeProvider>(
+          create: (_) => NodeProvider(),
+          update: (_, gatewayProvider, nodeProvider) {
+            nodeProvider!.onGatewayStateChanged(gatewayProvider.state);
+            return nodeProvider;
+          },
+        ),
       ],
       child: MaterialApp(
         title: 'OpenClaw',

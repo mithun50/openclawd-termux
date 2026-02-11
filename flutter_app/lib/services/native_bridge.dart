@@ -113,4 +113,12 @@ class NativeBridge {
   static Stream<String> get gatewayLogStream {
     return _eventChannel.receiveBroadcastStream().map((event) => event.toString());
   }
+
+  static Future<String?> requestScreenCapture(int durationMs) async {
+    return await _channel.invokeMethod('requestScreenCapture', {'durationMs': durationMs});
+  }
+
+  static Future<bool> stopScreenCapture() async {
+    return await _channel.invokeMethod('stopScreenCapture');
+  }
 }

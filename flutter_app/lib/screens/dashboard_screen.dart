@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../constants.dart';
 import '../providers/gateway_provider.dart';
+import '../providers/node_provider.dart';
 import '../widgets/gateway_controls.dart';
 import '../widgets/status_card.dart';
+import 'node_screen.dart';
 import 'onboarding_screen.dart';
 import 'terminal_screen.dart';
 import 'web_dashboard_screen.dart';
@@ -105,6 +107,25 @@ class DashboardScreen extends StatelessWidget {
               onTap: () => Navigator.of(context).push(
                 MaterialPageRoute(builder: (_) => const LogsScreen()),
               ),
+            ),
+            Consumer<NodeProvider>(
+              builder: (context, nodeProvider, _) {
+                final nodeState = nodeProvider.state;
+                return StatusCard(
+                  title: 'Node',
+                  subtitle: nodeState.isPaired
+                      ? 'Connected to gateway'
+                      : nodeState.isDisabled
+                          ? 'Device capabilities for AI'
+                          : nodeState.statusText,
+                  icon: Icons.devices,
+                  color: Colors.green,
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () => Navigator.of(context).push(
+                    MaterialPageRoute(builder: (_) => const NodeScreen()),
+                  ),
+                );
+              },
             ),
             const SizedBox(height: 24),
             Center(

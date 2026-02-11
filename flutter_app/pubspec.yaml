@@ -19,6 +19,11 @@ dependencies:
   path_provider: ^2.1.0
   permission_handler: ^11.3.0
   url_launcher: ^6.2.0
+  web_socket_channel: ^3.0.0
+  cryptography: ^2.7.0
+  uuid: ^4.2.0
+  camera: ^0.11.0
+  geolocator: ^12.0.0
 
 dev_dependencies:
   flutter_test:
