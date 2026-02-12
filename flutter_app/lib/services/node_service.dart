@@ -124,21 +124,21 @@ class NodeService {
     }
   }
 
-  /// Read the gateway auth token from the local openclaw config.
+  /// Extract the gateway auth token from the dashboard URL
+  /// (e.g. http://127.0.0.1:18789/#token=abc123...).
   Future<String?> _readGatewayToken() async {
-    try {
-      final raw = await NativeBridge.runInProot(
-        'cat /root/.openclaw/openclaw.json',
-        timeout: 5,
-      );
-      final config = jsonDecode(raw) as Map<String, dynamic>;
-      final gateway = config['gateway'] as Map<String, dynamic>?;
-      final auth = gateway?['auth'] as Map<String, dynamic>?;
-      return auth?['token'] as String?;
-    } catch (e) {
-      _log('[NODE] Could not read gateway token: $e');
-      return null;
+    final prefs = PreferencesService();
+    await prefs.init();
+    final dashboardUrl = prefs.dashboardUrl;
+    if (dashboardUrl != null) {
+      final tokenMatch = RegExp(r'[#?&]token=([0-9a-fA-F]+)').firstMatch(dashboardUrl);
+      if (tokenMatch != null) {
+        _log('[NODE] Gateway token extracted from dashboard URL');
+        return tokenMatch.group(1);
+      }
     }
+    _log('[NODE] Could not extract gateway token from dashboard URL');
+    return null;
   }
 
   /// Build and send the `connect` request per Gateway Protocol v3.
