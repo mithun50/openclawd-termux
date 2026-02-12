@@ -191,6 +191,7 @@ class NodeService {
     // Build caps (unique capability names) and commands from registered handlers
     final commands = _capabilityHandlers.keys.toList();
     final caps = commands.map((c) => c.split('.').first).toSet().toList();
+    _log('[NODE] Declaring ${commands.length} commands: $commands');
 
     final connectFrame = NodeFrame.request('connect', {
       'minProtocol': 3,

@@ -4,11 +4,8 @@ import '../models/gateway_state.dart';
 import '../models/node_state.dart';
 import '../services/capabilities/camera_capability.dart';
 import '../services/capabilities/canvas_capability.dart';
-import '../services/capabilities/flash_capability.dart';
 import '../services/capabilities/location_capability.dart';
 import '../services/capabilities/screen_capability.dart';
-import '../services/capabilities/sensor_capability.dart';
-import '../services/capabilities/vibration_capability.dart';
 import '../services/node_service.dart';
 import '../services/preferences_service.dart';
 
@@ -19,14 +16,11 @@ class NodeProvider extends ChangeNotifier {
   NodeState _state = const NodeState();
   GatewayState? _lastGatewayState;
 
-  // Capabilities
+  // Capabilities (only those in gateway's Android command policy)
   final _cameraCapability = CameraCapability();
   final _canvasCapability = CanvasCapability();
-  final _flashCapability = FlashCapability();
   final _locationCapability = LocationCapability();
   final _screenCapability = ScreenCapability();
-  final _sensorCapability = SensorCapability();
-  final _vibrationCapability = VibrationCapability();
 
   NodeState get state => _state;
 
@@ -40,6 +34,8 @@ class NodeProvider extends ChangeNotifier {
   }
 
   void _registerCapabilities() {
+    // Only register capabilities in the gateway's Android command policy
+    // (see node-command-policy.js PLATFORM_DEFAULTS.android)
     _nodeService.registerCapability(
       _cameraCapability.name,
       _cameraCapability.commands.map((c) => '${_cameraCapability.name}.$c').toList(),
@@ -51,11 +47,6 @@ class NodeProvider extends ChangeNotifier {
       (cmd, params) => _canvasCapability.handle(cmd, params),
     );
     _nodeService.registerCapability(
-      _flashCapability.name,
-      _flashCapability.commands.map((c) => '${_flashCapability.name}.$c').toList(),
-      (cmd, params) => _flashCapability.handleWithPermission(cmd, params),
-    );
-    _nodeService.registerCapability(
       _locationCapability.name,
       _locationCapability.commands.map((c) => '${_locationCapability.name}.$c').toList(),
       (cmd, params) => _locationCapability.handleWithPermission(cmd, params),
@@ -64,16 +55,6 @@ class NodeProvider extends ChangeNotifier {
       _screenCapability.name,
       _screenCapability.commands.map((c) => '${_screenCapability.name}.$c').toList(),
       (cmd, params) => _screenCapability.handle(cmd, params),
-    );
-    _nodeService.registerCapability(
-      _sensorCapability.name,
-      _sensorCapability.commands.map((c) => '${_sensorCapability.name}.$c').toList(),
-      (cmd, params) => _sensorCapability.handleWithPermission(cmd, params),
-    );
-    _nodeService.registerCapability(
-      _vibrationCapability.name,
-      _vibrationCapability.commands.map((c) => '${_vibrationCapability.name}.$c').toList(),
-      (cmd, params) => _vibrationCapability.handle(cmd, params),
     );
   }
 
@@ -144,7 +125,6 @@ class NodeProvider extends ChangeNotifier {
     _subscription?.cancel();
     _nodeService.dispose();
     _cameraCapability.dispose();
-    _flashCapability.dispose();
     super.dispose();
   }
 }
