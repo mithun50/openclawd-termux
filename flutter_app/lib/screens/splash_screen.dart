@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../l10n/app_localizations.dart';
 import '../constants.dart';
 import '../services/native_bridge.dart';
 import '../services/preferences_service.dart';
@@ -13,7 +14,7 @@ class SplashScreen extends StatefulWidget {
 }
 
 class _SplashScreenState extends State<SplashScreen> {
-  String _status = 'Loading...';
+  String? _statusKey;
 
   @override
   void initState() {
@@ -25,7 +26,7 @@ class _SplashScreenState extends State<SplashScreen> {
     await Future.delayed(const Duration(milliseconds: 500));
 
     try {
-      setState(() => _status = 'Checking setup status...');
+      setState(() => _statusKey = 'checkingSetup');
 
       final prefs = PreferencesService();
       await prefs.init();
@@ -51,13 +52,18 @@ class _SplashScreenState extends State<SplashScreen> {
       }
     } catch (e) {
       if (mounted) {
-        setState(() => _status = 'Error: $e');
+        setState(() => _statusKey = null);
       }
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    final statusText = _statusKey == 'checkingSetup'
+        ? l10n.checkingSetup
+        : l10n.loading;
+
     return Scaffold(
       body: Center(
         child: Column(
@@ -70,21 +76,21 @@ class _SplashScreenState extends State<SplashScreen> {
             ),
             const SizedBox(height: 24),
             Text(
-              'OpenClaw',
+              l10n.appTitle,
               style: Theme.of(context).textTheme.headlineMedium?.copyWith(
                 fontWeight: FontWeight.bold,
               ),
             ),
             const SizedBox(height: 8),
             Text(
-              'AI Gateway for Android',
+              l10n.aiGateway,
               style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                 color: Theme.of(context).colorScheme.onSurfaceVariant,
               ),
             ),
             const SizedBox(height: 4),
             Text(
-              'by ${AppConstants.authorName} | ${AppConstants.orgName}',
+              l10n.byLine(AppConstants.authorName, AppConstants.orgName),
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
                 color: Theme.of(context).colorScheme.onSurfaceVariant,
               ),
@@ -93,7 +99,7 @@ class _SplashScreenState extends State<SplashScreen> {
             const CircularProgressIndicator(),
             const SizedBox(height: 16),
             Text(
-              _status,
+              statusText,
               style: Theme.of(context).textTheme.bodySmall,
             ),
           ],

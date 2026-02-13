@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../l10n/app_localizations.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 import '../constants.dart';
 import '../services/preferences_service.dart';
@@ -15,7 +16,7 @@ class WebDashboardScreen extends StatefulWidget {
 class _WebDashboardScreenState extends State<WebDashboardScreen> {
   late final WebViewController _controller;
   bool _loading = true;
-  String? _error;
+  String? _errorDescription;
 
   @override
   void initState() {
@@ -34,7 +35,7 @@ class _WebDashboardScreenState extends State<WebDashboardScreen> {
             if (mounted) {
               setState(() {
                 _loading = false;
-                _error = 'Failed to load dashboard: ${error.description}';
+                _errorDescription = error.description;
               });
             }
           },
@@ -56,15 +57,17 @@ class _WebDashboardScreenState extends State<WebDashboardScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Web Dashboard'),
+        title: Text(l10n.webDashboardTitle),
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
             onPressed: () {
               setState(() {
-                _error = null;
+                _errorDescription = null;
                 _loading = true;
               });
               _controller.reload();
@@ -74,7 +77,7 @@ class _WebDashboardScreenState extends State<WebDashboardScreen> {
       ),
       body: Stack(
         children: [
-          if (_error != null)
+          if (_errorDescription != null)
             Center(
               child: Padding(
                 padding: const EdgeInsets.all(24),
@@ -88,20 +91,20 @@ class _WebDashboardScreenState extends State<WebDashboardScreen> {
                     ),
                     const SizedBox(height: 16),
                     Text(
-                      _error!,
+                      l10n.failedToLoadDashboard(_errorDescription!),
                       textAlign: TextAlign.center,
                     ),
                     const SizedBox(height: 16),
                     FilledButton.icon(
                       onPressed: () {
                         setState(() {
-                          _error = null;
+                          _errorDescription = null;
                           _loading = true;
                         });
                         _controller.reload();
                       },
                       icon: const Icon(Icons.refresh),
-                      label: const Text('Retry'),
+                      label: Text(l10n.retry),
                     ),
                   ],
                 ),

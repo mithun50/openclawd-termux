@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import '../l10n/app_localizations.dart';
 import 'package:xterm/xterm.dart';
 import 'package:flutter_pty/flutter_pty.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -76,7 +77,7 @@ class _TerminalScreenState extends State<TerminalScreen> {
     } catch (e) {
       setState(() {
         _loading = false;
-        _error = 'Failed to start terminal: $e';
+        _error = e.toString();
       });
     }
   }
@@ -129,6 +130,7 @@ class _TerminalScreenState extends State<TerminalScreen> {
   }
 
   void _copySelection() {
+    final l10n = AppLocalizations.of(context)!;
     final text = _getSelectedText();
     if (text == null) return;
 
@@ -139,10 +141,10 @@ class _TerminalScreenState extends State<TerminalScreen> {
     if (url != null) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: const Text('Copied to clipboard'),
+          content: Text(l10n.copiedToClipboard),
           duration: const Duration(seconds: 3),
           action: SnackBarAction(
-            label: 'Open',
+            label: l10n.open,
             onPressed: () {
               final uri = Uri.tryParse(url);
               if (uri != null) {
@@ -154,15 +156,16 @@ class _TerminalScreenState extends State<TerminalScreen> {
       );
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Copied to clipboard'),
-          duration: Duration(seconds: 1),
+        SnackBar(
+          content: Text(l10n.copiedToClipboard),
+          duration: const Duration(seconds: 1),
         ),
       );
     }
   }
 
   void _openSelection() {
+    final l10n = AppLocalizations.of(context)!;
     final text = _getSelectedText();
     if (text == null) return;
 
@@ -175,9 +178,9 @@ class _TerminalScreenState extends State<TerminalScreen> {
       }
     }
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('No URL found in selection'),
-        duration: Duration(seconds: 1),
+      SnackBar(
+        content: Text(l10n.noUrlFound),
+        duration: const Duration(seconds: 1),
       ),
     );
   }
@@ -223,35 +226,36 @@ class _TerminalScreenState extends State<TerminalScreen> {
   }
 
   Future<void> _openUrl(String url) async {
+    final l10n = AppLocalizations.of(context)!;
     final uri = Uri.tryParse(url);
     if (uri == null) return;
 
     final shouldOpen = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Open Link'),
+        title: Text(l10n.openLink),
         content: Text(url),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Cancel'),
+            child: Text(l10n.cancel),
           ),
           TextButton(
             onPressed: () {
               Clipboard.setData(ClipboardData(text: url));
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Link copied'),
-                  duration: Duration(seconds: 1),
+                SnackBar(
+                  content: Text(l10n.linkCopied),
+                  duration: const Duration(seconds: 1),
                 ),
               );
               Navigator.pop(ctx, false);
             },
-            child: const Text('Copy'),
+            child: Text(l10n.copy),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Open'),
+            child: Text(l10n.open),
           ),
         ],
       ),
@@ -264,28 +268,30 @@ class _TerminalScreenState extends State<TerminalScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Terminal'),
+        title: Text(l10n.terminalTitle),
         actions: [
           IconButton(
             icon: const Icon(Icons.copy),
-            tooltip: 'Copy',
+            tooltip: l10n.copyTooltip,
             onPressed: _copySelection,
           ),
           IconButton(
             icon: const Icon(Icons.open_in_browser),
-            tooltip: 'Open URL',
+            tooltip: l10n.openUrlTooltip,
             onPressed: _openSelection,
           ),
           IconButton(
             icon: const Icon(Icons.paste),
-            tooltip: 'Paste',
+            tooltip: l10n.pasteTooltip,
             onPressed: _paste,
           ),
           IconButton(
             icon: const Icon(Icons.refresh),
-            tooltip: 'Restart',
+            tooltip: l10n.restartTooltip,
             onPressed: () {
               _pty?.kill();
               setState(() {
@@ -302,14 +308,16 @@ class _TerminalScreenState extends State<TerminalScreen> {
   }
 
   Widget _buildBody() {
+    final l10n = AppLocalizations.of(context)!;
+
     if (_loading) {
-      return const Center(
+      return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            CircularProgressIndicator(),
-            SizedBox(height: 16),
-            Text('Starting terminal...'),
+            const CircularProgressIndicator(),
+            const SizedBox(height: 16),
+            Text(l10n.startingTerminal),
           ],
         ),
       );
@@ -329,7 +337,7 @@ class _TerminalScreenState extends State<TerminalScreen> {
               ),
               const SizedBox(height: 16),
               Text(
-                _error!,
+                l10n.failedToStartTerminal(_error!),
                 textAlign: TextAlign.center,
                 style: TextStyle(color: Theme.of(context).colorScheme.error),
               ),
@@ -343,7 +351,7 @@ class _TerminalScreenState extends State<TerminalScreen> {
                   _startPty();
                 },
                 icon: const Icon(Icons.refresh),
-                label: const Text('Retry'),
+                label: Text(l10n.retry),
               ),
             ],
           ),

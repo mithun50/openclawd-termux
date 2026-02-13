@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import '../l10n/app_localizations.dart';
 import 'package:provider/provider.dart';
 import '../constants.dart';
 import '../models/gateway_state.dart';
@@ -9,9 +10,23 @@ import '../screens/logs_screen.dart';
 class GatewayControls extends StatelessWidget {
   const GatewayControls({super.key});
 
+  String _getStatusText(GatewayStatus status, AppLocalizations l10n) {
+    switch (status) {
+      case GatewayStatus.stopped:
+        return l10n.gatewayStopped;
+      case GatewayStatus.starting:
+        return l10n.gatewayStarting;
+      case GatewayStatus.running:
+        return l10n.gatewayRunning(AppConstants.gatewayPort.toString());
+      case GatewayStatus.error:
+        return l10n.gatewayError;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context)!;
 
     return Consumer<GatewayProvider>(
       builder: (context, provider, _) {
@@ -29,7 +44,7 @@ class GatewayControls extends StatelessWidget {
                     _statusDot(state.status),
                     const SizedBox(width: 12),
                     Text(
-                      'Gateway ${state.statusText}',
+                      _getStatusText(state.status, l10n),
                       style: theme.textTheme.titleLarge?.copyWith(
                         fontWeight: FontWeight.w600,
                       ),
@@ -51,14 +66,14 @@ class GatewayControls extends StatelessWidget {
                       ),
                       IconButton(
                         icon: const Icon(Icons.copy, size: 18),
-                        tooltip: 'Copy URL',
+                        tooltip: l10n.copy,
                         onPressed: () {
                           final url = state.dashboardUrl ?? AppConstants.gatewayUrl;
                           Clipboard.setData(ClipboardData(text: url));
                           ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('URL copied to clipboard'),
-                              duration: Duration(seconds: 2),
+                            SnackBar(
+                              content: Text(l10n.urlCopied),
+                              duration: const Duration(seconds: 2),
                             ),
                           );
                         },
@@ -80,7 +95,7 @@ class GatewayControls extends StatelessWidget {
                       FilledButton.icon(
                         onPressed: () => provider.start(),
                         icon: const Icon(Icons.play_arrow),
-                        label: const Text('Start Gateway'),
+                        label: Text(l10n.startGateway),
                       ),
                     if (state.isRunning || state.status == GatewayStatus.starting)
                       FilledButton.icon(
@@ -89,14 +104,14 @@ class GatewayControls extends StatelessWidget {
                         style: FilledButton.styleFrom(
                           backgroundColor: theme.colorScheme.error,
                         ),
-                        label: const Text('Stop Gateway'),
+                        label: Text(l10n.stopGateway),
                       ),
                     OutlinedButton.icon(
                       onPressed: () => Navigator.of(context).push(
                         MaterialPageRoute(builder: (_) => const LogsScreen()),
                       ),
                       icon: const Icon(Icons.article_outlined),
-                      label: const Text('View Logs'),
+                      label: Text(l10n.viewLogs),
                     ),
                   ],
                 ),

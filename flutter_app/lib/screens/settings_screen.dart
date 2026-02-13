@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../l10n/app_localizations.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../constants.dart';
 import '../services/native_bridge.dart';
@@ -54,17 +55,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context)!;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Settings')),
+      appBar: AppBar(title: Text(l10n.settings)),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : ListView(
               children: [
-                _sectionHeader(theme, 'General'),
+                _sectionHeader(theme, l10n.general),
                 SwitchListTile(
-                  title: const Text('Auto-start gateway'),
-                  subtitle: const Text('Start the gateway when the app opens'),
+                  title: Text(l10n.autoStartGateway),
+                  subtitle: Text(l10n.autoStartSubtitle),
                   value: _autoStart,
                   onChanged: (value) {
                     setState(() => _autoStart = value);
@@ -72,10 +74,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   },
                 ),
                 ListTile(
-                  title: const Text('Battery Optimization'),
+                  title: Text(l10n.batteryOptimization),
                   subtitle: Text(_batteryOptimized
-                      ? 'Optimized (may kill background sessions)'
-                      : 'Unrestricted (recommended)'),
+                      ? l10n.batteryOptimized
+                      : l10n.batteryUnrestricted),
                   leading: const Icon(Icons.battery_alert),
                   trailing: _batteryOptimized
                       ? const Icon(Icons.warning, color: Colors.orange)
@@ -88,43 +90,43 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   },
                 ),
                 const Divider(),
-                _sectionHeader(theme, 'System Info'),
+                _sectionHeader(theme, l10n.systemInfo),
                 ListTile(
-                  title: const Text('Architecture'),
+                  title: Text(l10n.architecture),
                   subtitle: Text(_arch),
                   leading: const Icon(Icons.memory),
                 ),
                 ListTile(
-                  title: const Text('PRoot path'),
+                  title: Text(l10n.prootPath),
                   subtitle: Text(_prootPath),
                   leading: const Icon(Icons.folder),
                 ),
                 ListTile(
-                  title: const Text('Rootfs'),
+                  title: Text(l10n.rootfs),
                   subtitle: Text(_status['rootfsExists'] == true
-                      ? 'Installed'
-                      : 'Not installed'),
+                      ? l10n.installed
+                      : l10n.notInstalled),
                   leading: const Icon(Icons.storage),
                 ),
                 ListTile(
-                  title: const Text('Node.js'),
+                  title: Text(l10n.nodeJs),
                   subtitle: Text(_status['nodeInstalled'] == true
-                      ? 'Installed'
-                      : 'Not installed'),
+                      ? l10n.installed
+                      : l10n.notInstalled),
                   leading: const Icon(Icons.code),
                 ),
                 ListTile(
-                  title: const Text('OpenClaw'),
+                  title: Text(l10n.openClaw),
                   subtitle: Text(_status['openclawInstalled'] == true
-                      ? 'Installed'
-                      : 'Not installed'),
+                      ? l10n.installed
+                      : l10n.notInstalled),
                   leading: const Icon(Icons.cloud),
                 ),
                 const Divider(),
-                _sectionHeader(theme, 'Maintenance'),
+                _sectionHeader(theme, l10n.maintenance),
                 ListTile(
-                  title: const Text('Re-run setup'),
-                  subtitle: const Text('Reinstall or repair the environment'),
+                  title: Text(l10n.rerunSetup),
+                  subtitle: Text(l10n.rerunSubtitle),
                   leading: const Icon(Icons.build),
                   trailing: const Icon(Icons.chevron_right),
                   onTap: () => Navigator.of(context).pushReplacement(
@@ -134,22 +136,22 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   ),
                 ),
                 const Divider(),
-                _sectionHeader(theme, 'About'),
-                const ListTile(
-                  title: Text('OpenClaw'),
+                _sectionHeader(theme, l10n.about),
+                ListTile(
+                  title: Text(l10n.openClaw),
                   subtitle: Text(
-                    'AI Gateway for Android\nVersion ${AppConstants.version}',
+                    l10n.aiGatewayVersion(AppConstants.version),
                   ),
-                  leading: Icon(Icons.info_outline),
+                  leading: const Icon(Icons.info_outline),
                   isThreeLine: true,
                 ),
-                const ListTile(
-                  title: Text('Developer'),
-                  subtitle: Text(AppConstants.authorName),
-                  leading: Icon(Icons.person),
+                ListTile(
+                  title: Text(l10n.developer),
+                  subtitle: const Text(AppConstants.authorName),
+                  leading: const Icon(Icons.person),
                 ),
                 ListTile(
-                  title: const Text('GitHub'),
+                  title: Text(l10n.github),
                   subtitle: const Text('mithun50/openclawd-termux'),
                   leading: const Icon(Icons.code),
                   trailing: const Icon(Icons.open_in_new, size: 18),
@@ -159,7 +161,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   ),
                 ),
                 ListTile(
-                  title: const Text('Contact'),
+                  title: Text(l10n.contact),
                   subtitle: const Text(AppConstants.authorEmail),
                   leading: const Icon(Icons.email),
                   trailing: const Icon(Icons.open_in_new, size: 18),
@@ -167,15 +169,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     Uri.parse('mailto:${AppConstants.authorEmail}'),
                   ),
                 ),
-                const ListTile(
-                  title: Text('License'),
-                  subtitle: Text(AppConstants.license),
-                  leading: Icon(Icons.description),
+                ListTile(
+                  title: Text(l10n.license),
+                  subtitle: const Text(AppConstants.license),
+                  leading: const Icon(Icons.description),
                 ),
                 const Divider(),
                 _sectionHeader(theme, AppConstants.orgName),
                 ListTile(
-                  title: const Text('Instagram'),
+                  title: Text(l10n.instagram),
                   subtitle: const Text('@nexgenxplorer_nxg'),
                   leading: const Icon(Icons.camera_alt),
                   trailing: const Icon(Icons.open_in_new, size: 18),
@@ -185,7 +187,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   ),
                 ),
                 ListTile(
-                  title: const Text('YouTube'),
+                  title: Text(l10n.youtube),
                   subtitle: const Text('@nexgenxplorer'),
                   leading: const Icon(Icons.play_circle_fill),
                   trailing: const Icon(Icons.open_in_new, size: 18),
@@ -195,7 +197,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   ),
                 ),
                 ListTile(
-                  title: const Text('Play Store'),
+                  title: Text(l10n.playStore),
                   subtitle: const Text('NextGenX Apps'),
                   leading: const Icon(Icons.shop),
                   trailing: const Icon(Icons.open_in_new, size: 18),
@@ -205,7 +207,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   ),
                 ),
                 ListTile(
-                  title: const Text('Email'),
+                  title: Text(l10n.email),
                   subtitle: const Text(AppConstants.orgEmail),
                   leading: const Icon(Icons.email_outlined),
                   trailing: const Icon(Icons.open_in_new, size: 18),

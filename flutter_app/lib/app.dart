@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'l10n/app_localizations.dart';
 import 'package:provider/provider.dart';
 import 'providers/setup_provider.dart';
 import 'providers/gateway_provider.dart';
@@ -17,6 +18,8 @@ class OpenClawApp extends StatelessWidget {
       child: MaterialApp(
         title: 'OpenClaw',
         debugShowCheckedModeBanner: false,
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
         theme: ThemeData(
           colorSchemeSeed: const Color(0xFF6750A4),
           useMaterial3: true,

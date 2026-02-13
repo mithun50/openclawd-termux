@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../l10n/app_localizations.dart';
 import 'package:provider/provider.dart';
 import '../constants.dart';
 import '../providers/gateway_provider.dart';
@@ -16,10 +17,11 @@ class DashboardScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context)!;
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('OpenClaw'),
+        title: Text(l10n.appTitle),
         actions: [
           IconButton(
             icon: const Icon(Icons.settings),
@@ -37,15 +39,15 @@ class DashboardScreen extends StatelessWidget {
             const GatewayControls(),
             const SizedBox(height: 16),
             Text(
-              'Quick Actions',
+              l10n.quickActions,
               style: theme.textTheme.titleMedium?.copyWith(
                 fontWeight: FontWeight.w600,
               ),
             ),
             const SizedBox(height: 8),
             StatusCard(
-              title: 'Terminal',
-              subtitle: 'Open Ubuntu shell with OpenClaw',
+              title: l10n.terminal,
+              subtitle: l10n.terminalSubtitle,
               icon: Icons.terminal,
               color: Colors.blueGrey,
               trailing: const Icon(Icons.chevron_right),
@@ -56,10 +58,10 @@ class DashboardScreen extends StatelessWidget {
             Consumer<GatewayProvider>(
               builder: (context, provider, _) {
                 return StatusCard(
-                  title: 'Web Dashboard',
+                  title: l10n.webDashboard,
                   subtitle: provider.state.isRunning
-                      ? 'Open OpenClaw dashboard in browser'
-                      : 'Start gateway first',
+                      ? l10n.webDashboardSubtitleRunning
+                      : l10n.startGatewayFirst,
                   icon: Icons.dashboard,
                   color: Colors.indigo,
                   trailing: const Icon(Icons.chevron_right),
@@ -76,8 +78,8 @@ class DashboardScreen extends StatelessWidget {
               },
             ),
             StatusCard(
-              title: 'Onboarding',
-              subtitle: 'Configure API keys and binding',
+              title: l10n.onboarding,
+              subtitle: l10n.onboardingSubtitle,
               icon: Icons.vpn_key,
               color: Colors.deepPurple,
               trailing: const Icon(Icons.chevron_right),
@@ -86,8 +88,8 @@ class DashboardScreen extends StatelessWidget {
               ),
             ),
             StatusCard(
-              title: 'Logs',
-              subtitle: 'View gateway output and errors',
+              title: l10n.logs,
+              subtitle: l10n.logsSubtitle,
               icon: Icons.article_outlined,
               color: Colors.teal,
               trailing: const Icon(Icons.chevron_right),
@@ -100,14 +102,14 @@ class DashboardScreen extends StatelessWidget {
               child: Column(
                 children: [
                   Text(
-                    'OpenClaw v${AppConstants.version}',
+                    l10n.versionLabel(AppConstants.version),
                     style: theme.textTheme.bodySmall?.copyWith(
                       color: theme.colorScheme.onSurfaceVariant,
                     ),
                   ),
                   const SizedBox(height: 2),
                   Text(
-                    'by ${AppConstants.authorName} | ${AppConstants.orgName}',
+                    l10n.byLine(AppConstants.authorName, AppConstants.orgName),
                     style: theme.textTheme.bodySmall?.copyWith(
                       color: theme.colorScheme.onSurfaceVariant,
                     ),

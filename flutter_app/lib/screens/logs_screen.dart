@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import '../l10n/app_localizations.dart';
 import 'package:provider/provider.dart';
 import '../providers/gateway_provider.dart';
 
@@ -26,21 +27,22 @@ class _LogsScreenState extends State<LogsScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context)!;
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Gateway Logs'),
+        title: Text(l10n.gatewayLogs),
         actions: [
           IconButton(
             icon: Icon(
               _autoScroll ? Icons.vertical_align_bottom : Icons.vertical_align_top,
             ),
-            tooltip: _autoScroll ? 'Auto-scroll on' : 'Auto-scroll off',
+            tooltip: _autoScroll ? l10n.autoScrollOn : l10n.autoScrollOff,
             onPressed: () => setState(() => _autoScroll = !_autoScroll),
           ),
           IconButton(
             icon: const Icon(Icons.copy),
-            tooltip: 'Copy all logs',
+            tooltip: l10n.copyAllLogs,
             onPressed: () => _copyLogs(context),
           ),
         ],
@@ -52,7 +54,7 @@ class _LogsScreenState extends State<LogsScreen> {
             child: TextField(
               controller: _searchController,
               decoration: InputDecoration(
-                hintText: 'Filter logs...',
+                hintText: l10n.filterLogs,
                 prefixIcon: const Icon(Icons.search),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(8),
@@ -87,7 +89,7 @@ class _LogsScreenState extends State<LogsScreen> {
                 if (filtered.isEmpty) {
                   return Center(
                     child: Text(
-                      logs.isEmpty ? 'No logs yet. Start the gateway.' : 'No matching logs.',
+                      logs.isEmpty ? l10n.noLogsYet : l10n.noMatchingLogs,
                       style: theme.textTheme.bodyMedium?.copyWith(
                         color: theme.colorScheme.onSurfaceVariant,
                       ),
@@ -141,11 +143,12 @@ class _LogsScreenState extends State<LogsScreen> {
   }
 
   void _copyLogs(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final provider = context.read<GatewayProvider>();
     final text = provider.state.logs.join('\n');
     Clipboard.setData(ClipboardData(text: text));
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Logs copied to clipboard')),
+      SnackBar(content: Text(l10n.logsCopied)),
     );
   }
 }

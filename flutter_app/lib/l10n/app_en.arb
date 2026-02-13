@@ -1,0 +1,150 @@
+{
+  "@@locale": "en",
+
+  "appTitle": "OpenClaw",
+  "aiGateway": "AI Gateway for Android",
+  "loading": "Loading...",
+  "checkingSetup": "Checking setup status...",
+
+  "setupTitle": "Setup OpenClaw",
+  "setupDescription": "This will download Ubuntu, Node.js, and OpenClaw into a self-contained environment.",
+  "settingUpEnvironment": "Setting up the environment. This may take several minutes.",
+  "beginSetup": "Begin Setup",
+  "retrySetup": "Retry Setup",
+  "configureApiKeys": "Configure API Keys",
+  "storageRequirement": "Requires ~500MB of storage and an internet connection",
+  "unknownError": "Unknown error",
+
+  "stepDownloadRootfs": "Download Ubuntu rootfs",
+  "stepExtractRootfs": "Extract rootfs",
+  "stepInstallNode": "Install Node.js",
+  "stepInstallOpenClaw": "Install OpenClaw",
+  "stepConfigureBypass": "Configure Bionic Bypass",
+  "setupComplete": "Setup complete!",
+
+  "quickActions": "Quick Actions",
+  "terminal": "Terminal",
+  "terminalSubtitle": "Open Ubuntu shell with OpenClaw",
+  "webDashboard": "Web Dashboard",
+  "webDashboardSubtitleRunning": "Open OpenClaw dashboard in browser",
+  "startGatewayFirst": "Start gateway first",
+  "onboarding": "Onboarding",
+  "onboardingSubtitle": "Configure API keys and binding",
+  "logs": "Logs",
+  "logsSubtitle": "View gateway output and errors",
+
+  "versionLabel": "OpenClaw v{version}",
+  "@versionLabel": {
+    "placeholders": {
+      "version": { "type": "String" }
+    }
+  },
+
+  "byLine": "by {author} | {org}",
+  "@byLine": {
+    "placeholders": {
+      "author": { "type": "String" },
+      "org": { "type": "String" }
+    }
+  },
+
+  "terminalTitle": "Terminal",
+  "startingTerminal": "Starting terminal...",
+  "failedToStartTerminal": "Failed to start terminal: {error}",
+  "@failedToStartTerminal": {
+    "placeholders": {
+      "error": { "type": "String" }
+    }
+  },
+  "openLink": "Open Link",
+  "cancel": "Cancel",
+  "copy": "Copy",
+  "open": "Open",
+  "paste": "Paste",
+  "restart": "Restart",
+  "copiedToClipboard": "Copied to clipboard",
+  "linkCopied": "Link copied",
+  "noUrlFound": "No URL found in selection",
+  "copyTooltip": "Copy",
+  "openUrlTooltip": "Open URL",
+  "pasteTooltip": "Paste",
+  "restartTooltip": "Restart",
+  "processExited": "Process exited with code {code}",
+  "@processExited": {
+    "placeholders": {
+      "code": { "type": "int" }
+    }
+  },
+
+  "webDashboardTitle": "Web Dashboard",
+  "failedToLoadDashboard": "Failed to load dashboard: {error}",
+  "@failedToLoadDashboard": {
+    "placeholders": {
+      "error": { "type": "String" }
+    }
+  },
+  "retry": "Retry",
+
+  "gatewayLogs": "Gateway Logs",
+  "filterLogs": "Filter logs...",
+  "copyAllLogs": "Copy all logs",
+  "autoScrollOn": "Auto-scroll on",
+  "autoScrollOff": "Auto-scroll off",
+  "noLogsYet": "No logs yet. Start the gateway.",
+  "noMatchingLogs": "No matching logs.",
+  "logsCopied": "Logs copied to clipboard",
+
+  "onboardingTitle": "OpenClaw Onboarding",
+  "startingOnboarding": "Starting onboarding...",
+  "goToDashboard": "Go to Dashboard",
+  "done": "Done",
+  "onboardingError": "Onboarding encountered an error. Check the terminal output above.",
+
+  "settings": "Settings",
+  "general": "General",
+  "autoStartGateway": "Auto-start gateway",
+  "autoStartSubtitle": "Start the gateway when the app opens",
+  "batteryOptimization": "Battery Optimization",
+  "batteryOptimized": "Optimized (may kill background sessions)",
+  "batteryUnrestricted": "Unrestricted (recommended)",
+  "systemInfo": "System Info",
+  "architecture": "Architecture",
+  "prootPath": "PRoot path",
+  "rootfs": "Rootfs",
+  "nodeJs": "Node.js",
+  "openClaw": "OpenClaw",
+  "installed": "Installed",
+  "notInstalled": "Not installed",
+  "maintenance": "Maintenance",
+  "rerunSetup": "Re-run setup",
+  "rerunSubtitle": "Reinstall or repair the environment",
+  "about": "About",
+  "aiGatewayVersion": "AI Gateway for Android\nVersion {version}",
+  "@aiGatewayVersion": {
+    "placeholders": {
+      "version": { "type": "String" }
+    }
+  },
+  "developer": "Developer",
+  "license": "License",
+  "contact": "Contact",
+  "github": "GitHub",
+  "instagram": "Instagram",
+  "youtube": "YouTube",
+  "playStore": "Play Store",
+  "email": "Email",
+
+  "startGateway": "Start Gateway",
+  "stopGateway": "Stop Gateway",
+  "viewLogs": "View Logs",
+  "urlCopied": "URL copied to clipboard",
+  "gatewayRunning": "Running on port {port}",
+  "@gatewayRunning": {
+    "placeholders": {
+      "port": { "type": "String" }
+    }
+  },
+  "gatewayStopped": "Gateway is stopped",
+  "gatewayStarting": "Starting...",
+  "gatewayError": "Error"
+}
