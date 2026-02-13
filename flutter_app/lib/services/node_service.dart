@@ -21,6 +21,7 @@ class NodeService {
 
   Stream<NodeState> get stateStream => _stateController.stream;
   NodeState get state => _state;
+  bool get isConnectionStale => _ws.isStale;
 
   void clearCachedToken() => _gatewayAuthToken = null;
 

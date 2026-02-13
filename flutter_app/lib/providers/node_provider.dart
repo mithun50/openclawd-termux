@@ -11,6 +11,7 @@ import '../services/capabilities/location_capability.dart';
 import '../services/capabilities/screen_capability.dart';
 import '../services/capabilities/sensor_capability.dart';
 import '../services/capabilities/vibration_capability.dart';
+import '../services/native_bridge.dart';
 import '../services/node_service.dart';
 import '../services/preferences_service.dart';
 
@@ -20,6 +21,7 @@ class NodeProvider extends ChangeNotifier with WidgetsBindingObserver {
   StreamSubscription? _subscription;
   NodeState _state = const NodeState();
   GatewayState? _lastGatewayState;
+  Timer? _watchdog;
 
   // Capabilities
   final _cameraCapability = CameraCapability();
@@ -44,12 +46,11 @@ class NodeProvider extends ChangeNotifier with WidgetsBindingObserver {
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState lifecycleState) {
-    if (lifecycleState == AppLifecycleState.resumed &&
-        !_state.isPaired &&
-        !_state.isDisabled &&
-        !_state.isConnecting) {
+    if (lifecycleState == AppLifecycleState.resumed) {
       // App came back to foreground — reconnect if the connection dropped
-      _checkAutoConnect();
+      if (!_state.isPaired && !_state.isDisabled && !_state.isConnecting) {
+        _checkAutoConnect();
+      }
     }
   }
 
@@ -97,7 +98,9 @@ class NodeProvider extends ChangeNotifier with WidgetsBindingObserver {
     await prefs.init();
     if (prefs.nodeEnabled) {
       await _requestNodePermissions();
+      await _requestBatteryOptimization();
       await _nodeService.connect();
+      _startWatchdog();
     }
   }
 
@@ -111,6 +114,7 @@ class NodeProvider extends ChangeNotifier with WidgetsBindingObserver {
       _checkAutoConnect();
     } else if (wasRunning && !isRunning && !_state.isDisabled) {
       // Gateway stopped - disconnect node
+      _stopWatchdog();
       _nodeService.disconnect();
     }
   }
@@ -121,6 +125,7 @@ class NodeProvider extends ChangeNotifier with WidgetsBindingObserver {
     if (prefs.nodeEnabled) {
       await _requestNodePermissions();
       await _nodeService.connect();
+      _startWatchdog();
     }
   }
 
@@ -134,18 +139,56 @@ class NodeProvider extends ChangeNotifier with WidgetsBindingObserver {
     ].request();
   }
 
+  /// Prompt user to disable battery optimization so Android doesn't kill
+  /// the app process while the node is connected in the background.
+  Future<void> _requestBatteryOptimization() async {
+    try {
+      final optimized = await NativeBridge.isBatteryOptimized();
+      if (optimized) {
+        await NativeBridge.requestBatteryOptimization();
+      }
+    } catch (_) {}
+  }
+
+  /// Periodic watchdog that detects stale/dropped connections and forces
+  /// reconnect. Runs every 45s. Handles two cases:
+  /// 1. Node should be connected but isn't (dropped in background)
+  /// 2. Node appears paired but WebSocket is stale (no data for 90s+)
+  void _startWatchdog() {
+    _watchdog?.cancel();
+    _watchdog = Timer.periodic(const Duration(seconds: 45), (_) {
+      if (_state.isDisabled) return;
+
+      if (!_state.isPaired && !_state.isConnecting) {
+        // Connection dropped — reconnect
+        _nodeService.connect();
+      } else if (_state.isPaired && _nodeService.isConnectionStale) {
+        // Connection appears alive but no data received — force reconnect
+        _nodeService.disconnect().then((_) => _nodeService.connect());
+      }
+    });
+  }
+
+  void _stopWatchdog() {
+    _watchdog?.cancel();
+    _watchdog = null;
+  }
+
   Future<void> enable() async {
     final prefs = PreferencesService();
     await prefs.init();
     prefs.nodeEnabled = true;
     await _requestNodePermissions();
+    await _requestBatteryOptimization();
     await _nodeService.connect();
+    _startWatchdog();
   }
 
   Future<void> disable() async {
     final prefs = PreferencesService();
     await prefs.init();
     prefs.nodeEnabled = false;
+    _stopWatchdog();
     await _nodeService.disable();
   }
 
@@ -159,7 +202,9 @@ class NodeProvider extends ChangeNotifier with WidgetsBindingObserver {
     // Clear cached token so it re-reads on next connect
     _nodeService.clearCachedToken();
     await _requestNodePermissions();
+    await _requestBatteryOptimization();
     await _nodeService.connect(host: host, port: port);
+    _startWatchdog();
   }
 
   Future<void> reconnect() async {
@@ -170,6 +215,7 @@ class NodeProvider extends ChangeNotifier with WidgetsBindingObserver {
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    _stopWatchdog();
     _subscription?.cancel();
     _nodeService.dispose();
     _cameraCapability.dispose();

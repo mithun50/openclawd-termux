@@ -16,9 +16,17 @@ class NodeWsService {
   Timer? _reconnectTimer;
   Timer? _pingTimer;
   String? _url;
+  DateTime? _lastActivity;
 
   Stream<NodeFrame> get frameStream => _frameController.stream;
   bool get isConnected => _connected;
+
+  /// Returns true if the WebSocket hasn't received any data for over 90s,
+  /// indicating the connection is likely stale.
+  bool get isStale =>
+      _connected &&
+      _lastActivity != null &&
+      DateTime.now().difference(_lastActivity!).inSeconds > 90;
 
   Future<void> connect(String host, int port) async {
     _url = 'ws://$host:$port';
@@ -35,11 +43,13 @@ class NodeWsService {
       await _channel!.ready;
       _connected = true;
       _reconnectAttempt = 0;
+      _lastActivity = DateTime.now();
 
       _startPing();
 
       _subscription = _channel!.stream.listen(
         (data) {
+          _lastActivity = DateTime.now();
           try {
             final frame = NodeFrame.decode(data as String);
             // Match pending request/response
