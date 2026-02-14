@@ -7,7 +7,6 @@ import '../../models/node_frame.dart';
 import 'capability_handler.dart';
 
 class CameraCapability extends CapabilityHandler {
-  CameraController? _controller;
   List<CameraDescription>? _cameras;
 
   @override
@@ -30,11 +29,12 @@ class CameraCapability extends CapabilityHandler {
     return status.isGranted;
   }
 
-  Future<CameraController> _getController({String? facing}) async {
+  /// Create a fresh controller for each operation. The caller MUST dispose it
+  /// when done so the camera hardware is released immediately.
+  Future<CameraController> _createController({String? facing}) async {
     _cameras ??= await availableCameras();
     if (_cameras!.isEmpty) throw Exception('No camera available');
 
-    // Select camera based on facing param
     final direction = facing == 'front'
         ? CameraLensDirection.front
         : CameraLensDirection.back;
@@ -43,18 +43,9 @@ class CameraCapability extends CapabilityHandler {
       orElse: () => _cameras!.first,
     );
 
-    // Reuse existing controller if it matches the requested camera
-    if (_controller != null &&
-        _controller!.value.isInitialized &&
-        _controller!.description == target) {
-      return _controller!;
-    }
-
-    // Dispose old controller if switching cameras
-    _controller?.dispose();
-    _controller = CameraController(target, ResolutionPreset.medium);
-    await _controller!.initialize();
-    return _controller!;
+    final controller = CameraController(target, ResolutionPreset.medium);
+    await controller.initialize();
+    return controller;
   }
 
   @override
@@ -93,9 +84,14 @@ class CameraCapability extends CapabilityHandler {
   }
 
   Future<NodeFrame> _snap(Map<String, dynamic> params) async {
+    CameraController? controller;
     try {
       final facing = params['facing'] as String?;
-      final controller = await _getController(facing: facing);
+      controller = await _createController(facing: facing);
+
+      // Brief settle time for auto-exposure/focus
+      await Future.delayed(const Duration(milliseconds: 500));
+
       final file = await controller.takePicture();
       final bytes = await File(file.path).readAsBytes();
       final b64 = base64Encode(bytes);
@@ -120,14 +116,18 @@ class CameraCapability extends CapabilityHandler {
         'code': 'CAMERA_ERROR',
         'message': '$e',
       });
+    } finally {
+      // Always release the camera
+      await controller?.dispose();
     }
   }
 
   Future<NodeFrame> _clip(Map<String, dynamic> params) async {
+    CameraController? controller;
     try {
       final durationMs = params['durationMs'] as int? ?? 5000;
       final facing = params['facing'] as String?;
-      final controller = await _getController(facing: facing);
+      controller = await _createController(facing: facing);
       await controller.startVideoRecording();
       await Future.delayed(Duration(milliseconds: durationMs));
       final file = await controller.stopVideoRecording();
@@ -145,11 +145,13 @@ class CameraCapability extends CapabilityHandler {
         'code': 'CAMERA_ERROR',
         'message': '$e',
       });
+    } finally {
+      // Always release the camera
+      await controller?.dispose();
     }
   }
 
   void dispose() {
-    _controller?.dispose();
-    _controller = null;
+    // No persistent controller to clean up anymore
   }
 }

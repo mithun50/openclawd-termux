@@ -29,9 +29,16 @@ class FlashCapability extends CapabilityHandler {
   }
 
   Future<CameraController> _getController() async {
-    if (_controller != null && _controller!.value.isInitialized) {
-      return _controller!;
+    // Verify existing controller is still usable
+    if (_controller != null) {
+      if (_controller!.value.isInitialized && !_controller!.value.hasError) {
+        return _controller!;
+      }
+      // Controller is stale/errored — dispose and recreate
+      try { _controller!.dispose(); } catch (_) {}
+      _controller = null;
     }
+
     _cameras ??= await availableCameras();
     if (_cameras!.isEmpty) throw Exception('No camera available');
     // Use back camera for flash/torch
@@ -68,8 +75,19 @@ class FlashCapability extends CapabilityHandler {
       final controller = await _getController();
       await controller.setFlashMode(on ? FlashMode.torch : FlashMode.off);
       _torchOn = on;
+
+      // If turning off, release the camera so it doesn't block snap/clip
+      if (!on) {
+        _controller?.dispose();
+        _controller = null;
+      }
+
       return NodeFrame.response('', payload: {'on': _torchOn});
     } catch (e) {
+      // If it failed, dispose and reset so next attempt gets a fresh controller
+      try { _controller?.dispose(); } catch (_) {}
+      _controller = null;
+      _torchOn = false;
       return NodeFrame.response('', error: {
         'code': 'FLASH_ERROR',
         'message': '$e',
