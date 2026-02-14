@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 import 'package:permission_handler/permission_handler.dart';
 import '../models/gateway_state.dart';
@@ -73,10 +72,10 @@ class NodeProvider extends ChangeNotifier with WidgetsBindingObserver {
   }
 
   @override
-  void didChangeAppLifecycleState(AppLifecycleState lifecycleState) {
-    if (lifecycleState == AppLifecycleState.resumed) {
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
       _onAppResumed();
-    } else if (lifecycleState == AppLifecycleState.paused) {
+    } else if (state == AppLifecycleState.paused) {
       _onAppPaused();
     }
   }
