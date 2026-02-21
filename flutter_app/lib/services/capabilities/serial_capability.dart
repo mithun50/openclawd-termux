@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:typed_data';
 import 'package:flutter_serial_communication/flutter_serial_communication.dart';
+import 'package:flutter_serial_communication/models/device_info.dart';
 import 'package:flutter_bluetooth_classic_serial/flutter_bluetooth_classic.dart';
 import 'package:permission_handler/permission_handler.dart';
 import '../../models/node_frame.dart';
@@ -162,7 +163,7 @@ class SerialCapability extends CapabilityHandler {
         'transport': 'usb',
         'devices': devices
             .map((d) => {
-                  'name': d.deviceName ?? d.productName ?? 'Unknown USB Device',
+                  'name': d.deviceName.isNotEmpty ? d.deviceName : (d.productName.isNotEmpty ? d.productName : 'Unknown USB Device'),
                   'deviceId': d.deviceId,
                   'vendorId': d.vendorId,
                   'productId': d.productId,
@@ -248,7 +249,7 @@ class SerialCapability extends CapabilityHandler {
 
     final connId = 'usb_${device.deviceId}';
     _usbConnectionId = connId;
-    _usbDeviceName = device.deviceName ?? device.productName ?? 'USB Device';
+    _usbDeviceName = device.deviceName.isNotEmpty ? device.deviceName : (device.productName.isNotEmpty ? device.productName : 'USB Device');
     _usbBuffer = _ReadBuffer();
 
     _usbDataSub?.cancel();
@@ -302,16 +303,7 @@ class SerialCapability extends CapabilityHandler {
 
     _btDataSub?.cancel();
     _btDataSub = _btSerial.onDataReceived.listen((event) {
-      if (event is List<int>) {
-        _btBuffer?.add(event);
-      } else {
-        try {
-          final data = (event as dynamic).data;
-          if (data is List<int>) {
-            _btBuffer?.add(data);
-          }
-        } catch (_) {}
-      }
+      _btBuffer?.add(event.data);
     });
 
     return NodeFrame.response('', payload: {
