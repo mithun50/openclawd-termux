@@ -56,7 +56,7 @@ OpenClaw brings the [OpenClaw](https://github.com/anthropics/openclaw) AI gatewa
 - **One-Tap Setup** — Downloads Ubuntu rootfs, Node.js 22, and OpenClaw automatically
 - **Built-in Terminal** — Full terminal emulator with extra keys toolbar, copy/paste, clickable URLs
 - **Gateway Controls** — Start/stop gateway with status indicator and health checks
-- **Node Device Capabilities** — 7 capabilities (15 commands) exposed to AI via WebSocket node protocol
+- **Node Device Capabilities** — 9 capabilities (21 commands) exposed to AI via WebSocket node protocol
 - **Token URL Display** — Captures auth token from onboarding, shows it with a copy button
 - **Web Dashboard** — Embedded WebView loads the dashboard with authentication token
 - **View Logs** — Real-time gateway log viewer with search/filter
@@ -93,8 +93,34 @@ The Flutter app connects to the gateway as a **node**, exposing Android hardware
 | **Screen** | `screen.record` | MediaProjection consent |
 | **Sensor** | `sensor.read`, `sensor.list` | Body Sensors |
 | **Haptic** | `haptic.vibrate` | None |
+| **Serial** | `serial.scan`, `serial.connect`, `serial.write`, `serial.read`, `serial.disconnect`, `serial.list` | Bluetooth (BT only) |
 
-The gateway's `openclaw.json` is automatically patched before startup to clear `denyCommands` and set `allowCommands` for all 15 commands.
+The gateway's `openclaw.json` is automatically patched before startup to clear `denyCommands` and set `allowCommands` for all registered commands.
+
+#### Serial Capability
+
+The serial capability enables AI agents to communicate with physical hardware over **Bluetooth Classic** (RFCOMM/SPP) and **USB serial** (CDC-ACM, FTDI, CH340, CP210x) — perfect for controlling Arduino, Micro:bit, HC-05, and similar devices.
+
+**Supported transports:**
+| Transport | Package | Supported Chips |
+|---|---|---|
+| USB Serial | `flutter_serial_communication` | CDC-ACM, FTDI, CH340, CP210x |
+| Bluetooth Classic | `flutter_bluetooth_classic_serial` | Any SPP/RFCOMM device |
+
+**Usage flow:**
+```
+serial.scan transport:"usb"                          # Discover USB devices
+serial.connect transport:"usb" deviceId:3 baudRate:9600   # Connect
+serial.write connectionId:"usb_3" data:"Hello\n"    # Send data
+serial.read connectionId:"usb_3" timeoutMs:2000      # Read response
+serial.disconnect connectionId:"all"                 # Clean up
+```
+
+**Notes:**
+- USB devices are detected automatically via USB OTG — no permissions required
+- Bluetooth devices must be paired via Android Settings first, then `serial.scan transport:"bluetooth"` lists them
+- One active connection per transport (USB and BT can be connected simultaneously)
+- Incoming data is buffered (64KB per connection) and read on demand with optional delimiter matching
 
 ### Termux CLI
 - **One-Command Setup** — Installs proot-distro, Ubuntu, Node.js 22, and OpenClaw
@@ -193,7 +219,7 @@ openclawx gateway --verbose
 │  ┌─────────────────┴────────────────────────────┐  │
 │  │         Node Provider (WebSocket)            │  │
 │  │  Camera · Flash · Location · Screen          │  │
-│  │  Sensor · Haptic · Canvas                    │  │
+│  │  Sensor · Haptic · Canvas · Serial           │  │
 │  └─────────────────┬────────────────────────────┘  │
 └────────────────────┼──────────────────────────────┘
                      │
@@ -204,7 +230,7 @@ openclawx gateway --verbose
 │  │   ┌─────────────────────────────────────┐  │   │
 │  │   │  OpenClaw AI Gateway                │  │   │
 │  │   │  http://localhost:18789             │  │   │
-│  │   │  ← Node WS: 15 device commands     │  │   │
+│  │   │  ← Node WS: 21 device commands     │  │   │
 │  │   └─────────────────────────────────────┘  │   │
 │  │   Optional: Go, Homebrew                  │   │
 │  └────────────────────────────────────────────┘   │
@@ -256,6 +282,7 @@ flutter_app/lib/
 │       ├── location_capability.dart  # GPS with timeout + fallback
 │       ├── screen_capability.dart    # Screen recording via MediaProjection
 │       ├── sensor_capability.dart    # Accelerometer, gyroscope, etc.
+│       ├── serial_capability.dart   # Bluetooth Classic + USB serial
 │       └── vibration_capability.dart # Haptic feedback
 └── widgets/
     ├── gateway_controls.dart  # Start/stop, URL display, copy button

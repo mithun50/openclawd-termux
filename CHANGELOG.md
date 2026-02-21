@@ -1,5 +1,37 @@
 # Changelog
 
+## v1.8.0 — Serial Capability (Bluetooth + USB)
+
+> Requires Android 10+ (API 29)
+
+### New: Serial Communication (#21)
+
+- **Bluetooth Classic Serial** — Connect to HC-05, Micro:bit, and any SPP/RFCOMM device via `flutter_bluetooth_classic_serial`
+- **USB Serial** — Connect to Arduino, Micro:bit, FTDI, CH340, CP210x via USB OTG using `flutter_serial_communication`
+- **Unified API** — Single `serial` capability with `transport` parameter ("bluetooth" or "usb"); 6 commands: `scan`, `connect`, `write`, `read`, `disconnect`, `list`
+- **64KB Read Buffer** — Incoming data is buffered per connection with delimiter-based and timeout-based reads
+- **Smart Permission Gating** — Bluetooth permissions requested only for BT commands; USB requires no runtime permissions
+- **Simultaneous Transports** — One USB and one BT connection can be active at the same time
+
+### Node Commands Added
+
+| Command | Description |
+|---------|-------------|
+| `serial.scan` | Discover USB devices or paired Bluetooth devices |
+| `serial.connect` | Open a persistent serial connection |
+| `serial.write` | Send data (utf8 or base64 encoded) |
+| `serial.read` | Read buffered data with timeout and delimiter support |
+| `serial.disconnect` | Close one or all connections |
+| `serial.list` | List active connections with buffer sizes |
+
+### Android Permissions Added
+
+- `BLUETOOTH`, `BLUETOOTH_ADMIN` (Android 11 and below)
+- `BLUETOOTH_CONNECT`, `BLUETOOTH_SCAN` (Android 12+)
+- `android.hardware.usb.host` feature (optional)
+
+---
+
 ## v1.7.1 — Background Persistence & Camera Fix
 
 > Requires Android 10+ (API 29)
