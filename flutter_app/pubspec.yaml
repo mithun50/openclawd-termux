@@ -25,6 +25,8 @@ dependencies:
   uuid: ^4.2.0
   camera: ^0.11.0
   geolocator: ^12.0.0
+  flutter_serial_communication: ^0.2.8
+  flutter_bluetooth_classic_serial: ^1.3.2
 
 dev_dependencies:
   flutter_test:
