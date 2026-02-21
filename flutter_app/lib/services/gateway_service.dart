@@ -91,6 +91,8 @@ class GatewayService {
       'screen.record',
       'sensor.read', 'sensor.list',
       'haptic.vibrate',
+      'serial.scan', 'serial.connect', 'serial.write',
+      'serial.read', 'serial.disconnect', 'serial.list',
     ];
     // Use a Node.js one-liner to safely merge into existing openclaw.json
     // without clobbering other settings (API keys, onboarding config, etc.)
